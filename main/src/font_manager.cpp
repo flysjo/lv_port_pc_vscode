@@ -73,11 +73,6 @@ static int32_t kern_pair_16_compare(const void * ref, const void * element)
     else return (int32_t) ref16_p->gid_right - element16_p[1];
 }
 
-typedef struct {
-    int8_t bit_pos;
-    uint8_t byte_value;
-} bit_iterator_t;
-
 typedef struct font_header_bin {
     uint32_t version;
     uint16_t tables_count;
@@ -117,6 +112,49 @@ typedef struct cmap_table_bin {
 
 namespace els::cpro2::common::util::fontmgr
 {
+    class BitIterator
+    {
+    public:
+        BitIterator(const std::vector<uint8_t> & cache) : cache_(cache), byte_pos_(0), bit_pos_(0) {}
+        unsigned int read_bits(int nbits, int * res)
+        {
+            uint8_t value = 0;
+            for (int i = 0; i < nbits; ++i)
+            {
+                if (byte_pos_ >= cache_.size())
+                {
+                    *res = 0;
+                    return 0;
+                }
+                if (bit_pos_ == 0)
+                {
+                    byte_value_ = cache_[byte_pos_];
+                }
+                value = (value << 1) | ((byte_value_ >> (7 - bit_pos_)) & 1);
+                bit_pos_ = (bit_pos_ + 1) & 7;
+                if (bit_pos_ == 0)
+                {
+                    byte_pos_++;
+                }
+            }
+            *res = 1;
+            return value;
+        }
+        int read_bits_signed(int nbits, int * res)
+        {
+            int value = read_bits(nbits, res);
+            if (value & (1 << (nbits - 1)))
+            {
+                value |= ~((1 << nbits) - 1);
+            }
+            return value;
+        }
+    private:
+        const std::vector<uint8_t> & cache_;
+        size_t byte_pos_;
+        size_t bit_pos_;
+        uint8_t byte_value_;
+    };
     class Font
     {
     public:
@@ -187,14 +225,20 @@ namespace els::cpro2::common::util::fontmgr
                 return false;
             }
 
-            bit_iterator_t bit_it = init_bit_iterator();
+            int cache_size = font_header_.advance_width_bits + font_header_.xy_bits * 2 + font_header_.wh_bits * 2;
+            std::vector<uint8_t> cache(cache_size / 8 + 1);
+            if (!read(cache.data(), cache.size(), NULL))
+            {
+                return false;
+            }
+            BitIterator bit_it = BitIterator(cache);
             int res;
 
             if(font_header_.advance_width_bits == 0) {
                 gdsc.adv_w = font_header_.default_advance_width;
             }
             else {
-                gdsc.adv_w = read_bits(&bit_it, font_header_.advance_width_bits, &res);
+                gdsc.adv_w = bit_it.read_bits(font_header_.advance_width_bits, &res);
                 if (!res) {
                     return -1;
                 }
@@ -204,22 +248,22 @@ namespace els::cpro2::common::util::fontmgr
                 gdsc.adv_w *= 16;
             }
 
-            gdsc.ofs_x = read_bits_signed(&bit_it, font_header_.xy_bits, &res);
+            gdsc.ofs_x = bit_it.read_bits_signed(font_header_.xy_bits, &res);
             if (!res) {
                 return -1;
             }
 
-            gdsc.ofs_y = read_bits_signed(&bit_it, font_header_.xy_bits, &res);
+            gdsc.ofs_y = bit_it.read_bits_signed(font_header_.xy_bits, &res);
             if (!res) {
                 return -1;
             }
 
-            gdsc.box_w = read_bits(&bit_it, font_header_.wh_bits, &res);
+            gdsc.box_w = bit_it.read_bits(font_header_.wh_bits, &res);
             if (!res) {
                 return -1;
             }
 
-            gdsc.box_h = read_bits(&bit_it, font_header_.wh_bits, &res);
+            gdsc.box_h = bit_it.read_bits(font_header_.wh_bits, &res);
             if (!res) {
                 return -1;
             }
@@ -281,6 +325,40 @@ namespace els::cpro2::common::util::fontmgr
             return true;
 
         }
+        bool load_glyph_bitmap(uint32_t gid, std::vector<uint8_t> & bitmap_out)
+        {
+            int bmp_size = bitmap_out.size();
+            std::vector<uint8_t> cache(bmp_size + nbits_ / 8 + 1);
+            if (!read(cache.data(), cache.size(), NULL))
+            {
+                return false;
+            }
+            BitIterator bit_it = BitIterator(cache);
+            int res;
+            if (!bit_it.read_bits(nbits_, &res))
+            {
+                return false;
+            }
+            for(int k = 0; k < bmp_size - 1; ++k) {
+                bitmap_out[k] = bit_it.read_bits(8, &res);
+                if(!res) {
+                    return false;
+                }
+            }
+            if (nbits_ % 8 == 0) {
+
+            } else {
+                bitmap_out[bmp_size - 1] = bit_it.read_bits(8 - nbits_ % 8, &res);
+                if(!res) {
+                    return false;
+                }
+
+                /*The last fragment should be on the MSB but read_bits() will place it to the LSB*/
+                bitmap_out[bmp_size - 1] = bitmap_out[bmp_size - 1] << (nbits_ % 8);
+            }
+            return true;
+        }
+
         const void * get_glyph_bitmap(lv_font_glyph_dsc_t * g_dsc, uint32_t unicode_letter, lv_draw_buf_t * draw_buf)
         {
             uint8_t * bitmap_out = draw_buf->data;
@@ -299,36 +377,13 @@ namespace els::cpro2::common::util::fontmgr
                 int next_offset = (gid < loca_count_ - 1) ? glyph_offset_[gid + 1] : (uint32_t)glyph_length_;
                 size_t startPos = glyph_start_ + glyph_offset_[gid];
                 seek(startPos);
-
                 int bmp_size = next_offset - glyph_offset_[gid] - nbits_ / 8;
                 if(bmp_size == 0) return NULL;
-                int res;
                 int nbits_bytes = (nbits_ + 7) / 8;
-                bit_iterator_t bit_it = init_bit_iterator();
-                if (!read_bits(&bit_it, nbits_, &res))
+                std::vector<uint8_t> bitmap_in_tmp(bmp_size);
+                if (!load_glyph_bitmap(gid, bitmap_in_tmp))
                 {
                     return NULL;
-                }
-                std::vector<uint8_t> bitmap_in_tmp(bmp_size);
-                if (nbits_ % 8 == 0) {
-                    if (!read(bitmap_in_tmp.data(), bmp_size, NULL))
-                    {
-                        return NULL;
-                    }
-                } else {
-                    for(int k = 0; k < bmp_size - 1; ++k) {
-                        bitmap_in_tmp[k] = read_bits(&bit_it, 8, &res);
-                        if(!res) {
-                            return NULL;
-                        }
-                    }
-                    bitmap_in_tmp[bmp_size - 1] = read_bits(&bit_it, 8 - nbits_ % 8, &res);
-                    if(!res) {
-                        return NULL;
-                    }
-
-                    /*The last fragment should be on the MSB but read_bits() will place it to the LSB*/
-                    bitmap_in_tmp[bmp_size - 1] = bitmap_in_tmp[bmp_size - 1] << (nbits_ % 8);
                 }
                 const uint8_t * bitmap_in = &bitmap_in_tmp[0];
                 uint8_t * bitmap_out_tmp = bitmap_out;
@@ -610,45 +665,6 @@ namespace els::cpro2::common::util::fontmgr
                 return -1;
             }
             return glyph_length;
-        }
-        bit_iterator_t init_bit_iterator()
-        {
-            bit_iterator_t it;
-            it.bit_pos = -1;
-            it.byte_value = 0;
-            return it;
-        }
-
-        unsigned int read_bits(bit_iterator_t * it, int n_bits, int * res)
-        {
-            unsigned int value = 0;
-            while (n_bits--) {
-                it->byte_value = it->byte_value << 1;
-                it->bit_pos--;
-
-                if(it->bit_pos < 0) {
-                    it->bit_pos = 7;
-                    if (!read(&(it->byte_value), 1, NULL))
-                    {
-                        *res = 0;
-                        return 0;
-                    }
-                }
-                int8_t bit = (it->byte_value & 0x80) ? 1 : 0;
-
-                value |= (bit << n_bits);
-            }
-            *res = 1;
-            return value;
-        }
-
-        int read_bits_signed(bit_iterator_t * it, int n_bits, int * res)
-        {
-            unsigned int value = read_bits(it, n_bits, res);
-            if(value & (1 << (n_bits - 1))) {
-                value |= ~0u << n_bits;
-            }
-            return value;
         }
         size_t load_cmaps(lv_font_fmt_txt_dsc_t * font_dsc, uint32_t cmaps_start)
         {
