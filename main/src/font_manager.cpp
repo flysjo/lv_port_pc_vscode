@@ -18,6 +18,8 @@
 #include <map>
 #include "font_manager.h"
 
+#include "../normal_2.h"
+
 #include "lvgl/src/misc/lv_utils.h"
 
 
@@ -75,6 +77,7 @@ typedef struct {
     int8_t bit_pos;
     uint8_t byte_value;
 } bit_iterator_t;
+
 typedef struct font_header_bin {
     uint32_t version;
     uint16_t tables_count;
@@ -177,6 +180,59 @@ namespace els::cpro2::common::util::fontmgr
             delete glyph_offset_;
         }
         lv_font_t* get() { return &font_; }
+        bool load_glyph_dsc(uint32_t gid, lv_font_fmt_txt_glyph_dsc_t & gdsc)
+        {
+            if (!seek(glyph_start_ + glyph_offset_[gid]))
+            {
+                return false;
+            }
+
+            bit_iterator_t bit_it = init_bit_iterator();
+            int res;
+
+            if(font_header_.advance_width_bits == 0) {
+                gdsc.adv_w = font_header_.default_advance_width;
+            }
+            else {
+                gdsc.adv_w = read_bits(&bit_it, font_header_.advance_width_bits, &res);
+                if (!res) {
+                    return -1;
+                }
+            }
+
+            if(font_header_.advance_width_format == 0) {
+                gdsc.adv_w *= 16;
+            }
+
+            gdsc.ofs_x = read_bits_signed(&bit_it, font_header_.xy_bits, &res);
+            if (!res) {
+                return -1;
+            }
+
+            gdsc.ofs_y = read_bits_signed(&bit_it, font_header_.xy_bits, &res);
+            if (!res) {
+                return -1;
+            }
+
+            gdsc.box_w = read_bits(&bit_it, font_header_.wh_bits, &res);
+            if (!res) {
+                return -1;
+            }
+
+            gdsc.box_h = read_bits(&bit_it, font_header_.wh_bits, &res);
+            if (!res) {
+                return -1;
+            }
+
+            if (gid == 0) {
+                gdsc.adv_w = 0;
+                gdsc.box_w = 0;
+                gdsc.box_h = 0;
+                gdsc.ofs_x = 0;
+                gdsc.ofs_y = 0;
+            }
+            return true;
+        }
         bool get_glyph_dsc(lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next)
         {
 #if LV_VERSION_CHECK(9, 0, 0)
@@ -200,20 +256,24 @@ namespace els::cpro2::common::util::fontmgr
                 }
             }
             /*Put together a glyph dsc*/
-            const lv_font_fmt_txt_glyph_dsc_t * gdsc = &fdsc->glyph_dsc[gid];
+            lv_font_fmt_txt_glyph_dsc_t gdsc;
+            if (!load_glyph_dsc(gid, gdsc))
+            {
+                return false;
+            }
             int32_t kv = ((int32_t)((int32_t)kvalue * fdsc->kern_scale) >> 4);
 
-            uint32_t adv_w = gdsc->adv_w;
+            uint32_t adv_w = gdsc.adv_w;
             if(is_tab) adv_w *= 2;
 
             adv_w += kv;
             adv_w  = (adv_w + (1 << 3)) >> 4;
 
             dsc_out->adv_w = adv_w;
-            dsc_out->box_h = gdsc->box_h;
-            dsc_out->box_w = gdsc->box_w;
-            dsc_out->ofs_x = gdsc->ofs_x;
-            dsc_out->ofs_y = gdsc->ofs_y;
+            dsc_out->box_h = gdsc.box_h;
+            dsc_out->box_w = gdsc.box_w;
+            dsc_out->ofs_x = gdsc.ofs_x;
+            dsc_out->ofs_y = gdsc.ofs_y;
             dsc_out->format = (uint8_t)fdsc->bpp;
             dsc_out->is_placeholder = false;
 
@@ -231,7 +291,7 @@ namespace els::cpro2::common::util::fontmgr
             uint32_t gid = get_glyph_dsc_id(unicode_letter);
             if(!gid) return NULL;
 
-            const lv_font_fmt_txt_glyph_dsc_t * gdsc = &fdsc->glyph_dsc[gid];
+            // const lv_font_fmt_txt_glyph_dsc_t * gdsc = &fdsc->glyph_dsc[gid];
 
 
             if(fdsc->bitmap_format == LV_FONT_FMT_TXT_PLAIN)
@@ -240,18 +300,17 @@ namespace els::cpro2::common::util::fontmgr
                 size_t startPos = glyph_start_ + glyph_offset_[gid];
                 seek(startPos);
 
-                bit_iterator_t bit_it = init_bit_iterator();
-                int nbits = font_header_.advance_width_bits + 2 * font_header_.xy_bits + 2 * font_header_.wh_bits;
-                int bmp_size = next_offset - glyph_offset_[gid] - nbits / 8;
+                int bmp_size = next_offset - glyph_offset_[gid] - nbits_ / 8;
                 if(bmp_size == 0) return NULL;
                 int res;
-                if (!read_bits(&bit_it, nbits, &res))
+                int nbits_bytes = (nbits_ + 7) / 8;
+                bit_iterator_t bit_it = init_bit_iterator();
+                if (!read_bits(&bit_it, nbits_, &res))
                 {
                     return NULL;
                 }
-
                 std::vector<uint8_t> bitmap_in_tmp(bmp_size);
-                if (nbits % 8 == 0) {
+                if (nbits_ % 8 == 0) {
                     if (!read(bitmap_in_tmp.data(), bmp_size, NULL))
                     {
                         return NULL;
@@ -263,13 +322,13 @@ namespace els::cpro2::common::util::fontmgr
                             return NULL;
                         }
                     }
-                    bitmap_in_tmp[bmp_size - 1] = read_bits(&bit_it, 8 - nbits % 8, &res);
+                    bitmap_in_tmp[bmp_size - 1] = read_bits(&bit_it, 8 - nbits_ % 8, &res);
                     if(!res) {
                         return NULL;
                     }
 
                     /*The last fragment should be on the MSB but read_bits() will place it to the LSB*/
-                    bitmap_in_tmp[bmp_size - 1] = bitmap_in_tmp[bmp_size - 1] << (nbits % 8);
+                    bitmap_in_tmp[bmp_size - 1] = bitmap_in_tmp[bmp_size - 1] << (nbits_ % 8);
                 }
                 const uint8_t * bitmap_in = &bitmap_in_tmp[0];
                 uint8_t * bitmap_out_tmp = bitmap_out;
@@ -401,16 +460,10 @@ namespace els::cpro2::common::util::fontmgr
         }
         size_t num_chars()
         {
-            const lv_font_fmt_txt_dsc_t * font_dsc = reinterpret_cast<const lv_font_fmt_txt_dsc_t *>(font_.dsc);
-            size_t result = 0;
-            for (int i = 0; i < font_dsc->cmap_num; ++i)
-            {
-                result += font_dsc->cmaps[i].range_length;
-            }
-            return result;
+            return loca_count_;
         }
         size_t size_of() {
-            return sizeof(Font) + size_;
+            return sizeof(this) + size_;
         }
         bool load()
         {
@@ -436,6 +489,7 @@ namespace els::cpro2::common::util::fontmgr
             font_.subpx = font_header_.subpixels_mode;
             font_.underline_position = font_header_.underline_position;
             font_.underline_thickness = font_header_.underline_thickness;
+            nbits_ = font_header_.advance_width_bits + 2 * font_header_.xy_bits + 2 * font_header_.wh_bits;
             font_dsc->bpp = font_header_.bits_per_pixel;
             font_dsc->kern_scale = font_header_.kerning_scale;
             font_dsc->bitmap_format = font_header_.compression_id;
@@ -555,77 +609,6 @@ namespace els::cpro2::common::util::fontmgr
             if(glyph_length < 0) {
                 return -1;
             }
-
-            lv_font_fmt_txt_glyph_dsc_t * glyph_dsc = reinterpret_cast<lv_font_fmt_txt_glyph_dsc_t *>(malloc(loca_count * sizeof(lv_font_fmt_txt_glyph_dsc_t)));
-            memset(glyph_dsc, 0, loca_count * sizeof(lv_font_fmt_txt_glyph_dsc_t));
-            font_dsc->glyph_dsc = glyph_dsc;
-
-            int cur_bmp_size = 0;
-
-            for(unsigned int i = 0; i < loca_count; ++i)
-            {
-                lv_font_fmt_txt_glyph_dsc_t * gdsc = &glyph_dsc[i];
-
-                if (!seek(start + glyph_offset[i]))
-                {
-                    return -1;
-                }
-
-                bit_iterator_t bit_it = init_bit_iterator();
-                int res;
-
-                if(font_header_.advance_width_bits == 0) {
-                    gdsc->adv_w = font_header_.default_advance_width;
-                }
-                else {
-                    gdsc->adv_w = read_bits(&bit_it, font_header_.advance_width_bits, &res);
-                    if (!res) {
-                        return -1;
-                    }
-                }
-
-                if(font_header_.advance_width_format == 0) {
-                    gdsc->adv_w *= 16;
-                }
-
-                gdsc->ofs_x = read_bits_signed(&bit_it, font_header_.xy_bits, &res);
-                if (!res) {
-                    return -1;
-                }
-
-                gdsc->ofs_y = read_bits_signed(&bit_it, font_header_.xy_bits, &res);
-                if (!res) {
-                    return -1;
-                }
-
-                gdsc->box_w = read_bits(&bit_it, font_header_.wh_bits, &res);
-                if (!res) {
-                    return -1;
-                }
-
-                gdsc->box_h = read_bits(&bit_it, font_header_.wh_bits, &res);
-                if (!res) {
-                    return -1;
-                }
-
-                int nbits = font_header_.advance_width_bits + 2 * font_header_.xy_bits + 2 * font_header_.wh_bits;
-                int next_offset = (i < loca_count - 1) ? glyph_offset[i + 1] : (uint32_t)glyph_length;
-                int bmp_size = next_offset - glyph_offset[i] - nbits / 8;
-
-                if(i == 0) {
-                    gdsc->adv_w = 0;
-                    gdsc->box_w = 0;
-                    gdsc->box_h = 0;
-                    gdsc->ofs_x = 0;
-                    gdsc->ofs_y = 0;
-                }
-
-                gdsc->bitmap_index = cur_bmp_size;
-                if(gdsc->box_w * gdsc->box_h != 0) {
-                    // save file offset (cur_bmp_size), nbits % 8 == 0 for use when loading bitmap
-                    cur_bmp_size += bmp_size;
-                }
-            }
             return glyph_length;
         }
         bit_iterator_t init_bit_iterator()
@@ -686,8 +669,9 @@ namespace els::cpro2::common::util::fontmgr
             font_dsc->cmap_num = cmaps_subtables_count;
 
             // std::unique_ptr<cmap_table_bin_t[font_dsc->cmap_num]> cmaps_tables = new cmap_table_bin_t[font_dsc->cmap_num];
-            std::vector<cmap_table_bin_t> cmaps_tables(font_dsc->cmap_num);
-            if (cmaps_tables.size() != font_dsc->cmap_num)
+            // std::vector<cmap_table_bin_t> cmaps_tables(font_dsc->cmap_num);
+            auto cmaps_tables = reinterpret_cast<cmap_table_bin_t*>(fontMalloc(sizeof(cmap_table_bin_t)*cmaps_subtables_count));
+            if (cmaps_tables == nullptr)
             {
                 return -1;
             }
@@ -866,6 +850,7 @@ namespace els::cpro2::common::util::fontmgr
             auto ptr = new uint8_t[num];
             if (ptr)
             {
+                std::cout << "Allocating " << num << " bytes" << std::endl;
                 size_ += sizeof(uint8_t) * num;
             }
             return ptr;
@@ -880,6 +865,7 @@ namespace els::cpro2::common::util::fontmgr
         int32_t glyph_length_;
         uint32_t * glyph_offset_;
         font_header_bin_t font_header_;
+        int nbits_;
     };
 
     class FontManager
@@ -921,6 +907,12 @@ std::map<lv_font_t*, Font*> font_map;
 
 
 extern "C" {
+
+    void fontmgr_init()
+    {
+        const lv_font_t* font_normal_2 =  &normal_2;
+        std::cout << "normal_2 font size: " << sizeof(normal_2) << std::endl;
+    }
 
     lv_font_t *fontmgr_load(const char *name)
     {

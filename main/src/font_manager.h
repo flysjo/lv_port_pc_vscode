@@ -19,13 +19,14 @@ namespace els::cpro2::common::util::fontmgr
 {
 
 } // namespace els::cpro2::common::util::fontmgr
-
 #endif  // __cplusplus
 
 #if defined(__cplusplus)
 extern "C"
 {
 #endif  // __cplusplus
+
+    void fontmgr_init();
 
     lv_font_t *fontmgr_load(const char *name);
 
