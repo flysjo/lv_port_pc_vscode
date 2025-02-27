@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 26 px
  * Bpp: 2
- * Opts: --size 26 --bpp 2 --no-compress --format lvgl --font /usr/share/fonts/truetype/noto/NotoMono-Regular.ttf --output normal_2.h --force-fast-kern-format --range 0x20-0x1F470
+ * Opts: --size 26 --bpp 2 --no-compress --format lvgl --font /usr/share/fonts/truetype/noto/NotoMono-Regular.ttf --output normal_2.h --range 0x20-0x1F470
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -9973,3 +9973,4 @@ lv_font_t normal_2 = {
 
 
 #endif /*#if NORMAL_2*/
+

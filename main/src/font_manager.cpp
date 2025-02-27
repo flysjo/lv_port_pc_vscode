@@ -115,50 +115,49 @@ namespace els::cpro2::common::util::fontmgr
     class BitIterator
     {
     public:
-        BitIterator(const std::vector<uint8_t> & cache) : cache_(cache), byte_pos_(0), bit_pos_(0) {}
-        unsigned int read_bits(int nbits, int * res)
+        BitIterator(const std::vector<uint8_t> & cache) : cache_(cache), byte_pos_(0), bit_pos_(-1) {}
+        unsigned int read_bits(int n_bits, int * res)
         {
-            uint8_t value = 0;
-            for (int i = 0; i < nbits; ++i)
-            {
-                if (byte_pos_ >= cache_.size())
-                {
-                    *res = 0;
-                    return 0;
-                }
-                if (bit_pos_ == 0)
-                {
+            unsigned int value = 0;
+            while(n_bits--) {
+                byte_value_ = byte_value_ << 1;
+                bit_pos_--;
+
+                if(bit_pos_ < 0) {
+                    bit_pos_ = 7;
+                    if (byte_pos_ >= cache_.size())
+                    {
+                        *res = 0;
+                        return 0;
+                    }
                     byte_value_ = cache_[byte_pos_];
-                }
-                value = (value << 1) | ((byte_value_ >> (7 - bit_pos_)) & 1);
-                bit_pos_ = (bit_pos_ + 1) & 7;
-                if (bit_pos_ == 0)
-                {
                     byte_pos_++;
                 }
+                int8_t bit = (byte_value_ & 0x80) ? 1 : 0;
+                value |= (bit << n_bits);
             }
             *res = 1;
             return value;
         }
-        int read_bits_signed(int nbits, int * res)
+        int read_bits_signed(int n_bits, int * res)
         {
-            int value = read_bits(nbits, res);
-            if (value & (1 << (nbits - 1)))
+            int value = read_bits(n_bits, res);
+            if (value & (1 << (n_bits - 1)))
             {
-                value |= ~((1 << nbits) - 1);
+                value |= ~((1 << n_bits) - 1);
             }
             return value;
         }
     private:
         const std::vector<uint8_t> & cache_;
         size_t byte_pos_;
-        size_t bit_pos_;
+        int8_t bit_pos_;
         uint8_t byte_value_;
     };
     class Font
     {
     public:
-        Font(const char* filename) : filename_(filename), file_(nullptr), size_(0)
+        Font() : file_(nullptr), size_(0)
         {
             memset(&font_, 0, sizeof(lv_font_t));
             font_.get_glyph_dsc = my_get_glyph_dsc_cb;
@@ -275,6 +274,7 @@ namespace els::cpro2::common::util::fontmgr
                 gdsc.ofs_x = 0;
                 gdsc.ofs_y = 0;
             }
+            // std::cout << "gid: " << gid << " adv_w: " << (int)gdsc.adv_w << " box_w: " << (int)gdsc.box_w << " box_h: " << (int)gdsc.box_h << " ofs_x: " << (int)gdsc.ofs_x << " ofs_y: " << (int)gdsc.ofs_y << std::endl;
             return true;
         }
         bool get_glyph_dsc(lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next)
@@ -295,7 +295,7 @@ namespace els::cpro2::common::util::fontmgr
             int8_t kvalue = 0;
             if(fdsc->kern_dsc) {
                 uint32_t gid_next = get_glyph_dsc_id(unicode_next);
-                if(gid_next) {
+                if (gid_next) {
                     kvalue = get_kern_value(gid, gid_next);
                 }
             }
@@ -321,6 +321,10 @@ namespace els::cpro2::common::util::fontmgr
             dsc_out->format = (uint8_t)fdsc->bpp;
             dsc_out->is_placeholder = false;
 
+            // std::cout << "char: " << unicode << " gid: " << gid << " adv_w: " << (int)dsc_out->adv_w << " box_w: " << (int)dsc_out->box_w << " box_h: " << (int)dsc_out->box_h << " ofs_x: " << (int)dsc_out->ofs_x << " ofs_y: " << (int)dsc_out->ofs_y << std::endl;
+            // 'e' unicode value is 101
+            // 'm' unicode value is 109
+
             if(is_tab) dsc_out->box_w = dsc_out->box_w * 2;
             return true;
 
@@ -328,14 +332,14 @@ namespace els::cpro2::common::util::fontmgr
         bool load_glyph_bitmap(uint32_t gid, std::vector<uint8_t> & bitmap_out)
         {
             int bmp_size = bitmap_out.size();
-            std::vector<uint8_t> cache(bmp_size + nbits_ / 8 + 1);
+            std::vector<uint8_t> cache(bmp_size + nbits() / 8 + 1);
             if (!read(cache.data(), cache.size(), NULL))
             {
                 return false;
             }
             BitIterator bit_it = BitIterator(cache);
             int res;
-            if (!bit_it.read_bits(nbits_, &res))
+            if (!bit_it.read_bits(nbits(), &res))
             {
                 return false;
             }
@@ -345,16 +349,16 @@ namespace els::cpro2::common::util::fontmgr
                     return false;
                 }
             }
-            if (nbits_ % 8 == 0) {
+            if (nbits() % 8 == 0) {
 
             } else {
-                bitmap_out[bmp_size - 1] = bit_it.read_bits(8 - nbits_ % 8, &res);
+                bitmap_out[bmp_size - 1] = bit_it.read_bits(8 - nbits() % 8, &res);
                 if(!res) {
                     return false;
                 }
 
                 /*The last fragment should be on the MSB but read_bits() will place it to the LSB*/
-                bitmap_out[bmp_size - 1] = bitmap_out[bmp_size - 1] << (nbits_ % 8);
+                bitmap_out[bmp_size - 1] = bitmap_out[bmp_size - 1] << (nbits() % 8);
             }
             return true;
         }
@@ -377,9 +381,9 @@ namespace els::cpro2::common::util::fontmgr
                 int next_offset = (gid < loca_count_ - 1) ? glyph_offset_[gid + 1] : (uint32_t)glyph_length_;
                 size_t startPos = glyph_start_ + glyph_offset_[gid];
                 seek(startPos);
-                int bmp_size = next_offset - glyph_offset_[gid] - nbits_ / 8;
+                int bmp_size = next_offset - glyph_offset_[gid] - nbits() / 8;
                 if(bmp_size == 0) return NULL;
-                int nbits_bytes = (nbits_ + 7) / 8;
+                int nbits_bytes = (nbits() + 7) / 8;
                 std::vector<uint8_t> bitmap_in_tmp(bmp_size);
                 if (!load_glyph_bitmap(gid, bitmap_in_tmp))
                 {
@@ -520,9 +524,9 @@ namespace els::cpro2::common::util::fontmgr
         size_t size_of() {
             return sizeof(this) + size_;
         }
-        bool load()
+        bool load(const char* filename)
         {
-            file_ = fopen(filename_.c_str(), "rb");
+            file_ = fopen(filename, "rb");
             if (!file_)
             {
                 return false;
@@ -544,7 +548,6 @@ namespace els::cpro2::common::util::fontmgr
             font_.subpx = font_header_.subpixels_mode;
             font_.underline_position = font_header_.underline_position;
             font_.underline_thickness = font_header_.underline_thickness;
-            nbits_ = font_header_.advance_width_bits + 2 * font_header_.xy_bits + 2 * font_header_.wh_bits;
             font_dsc->bpp = font_header_.bits_per_pixel;
             font_dsc->kern_scale = font_header_.kerning_scale;
             font_dsc->bitmap_format = font_header_.compression_id;
@@ -871,17 +874,16 @@ namespace els::cpro2::common::util::fontmgr
             }
             return ptr;
         }
+        int nbits() { return font_header_.advance_width_bits + 2 * font_header_.xy_bits + 2 * font_header_.wh_bits; }
     private:
         FILE * file_;
         lv_font_t font_;
-        std::string filename_;
         size_t size_;
         uint32_t loca_count_;
         uint32_t glyph_start_;
         int32_t glyph_length_;
         uint32_t * glyph_offset_;
         font_header_bin_t font_header_;
-        int nbits_;
     };
 
     class FontManager
@@ -932,8 +934,8 @@ extern "C" {
 
     lv_font_t *fontmgr_load(const char *name)
     {
-        Font* font = new Font(name);
-        if (!font->load())
+        Font* font = new Font();
+        if (!font->load(name))
         {
             delete font;
             return NULL;

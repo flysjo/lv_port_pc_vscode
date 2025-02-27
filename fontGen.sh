@@ -23,7 +23,8 @@ fi
 
 # Generate the font files
 echo "Generating font files..."
+options="--bpp 2 --no-compress"
 
-npx lv_font_conv --size $3 --bpp 2 --no-compress --format bin --font $1 --output $2.bin --force-fast-kern-format --range 0x20-0x7F
-npx lv_font_conv --size $3 --bpp 2 --no-compress --format bin --font $1 --output $2_2.bin --force-fast-kern-format --range 0x20-0x1F470
-npx lv_font_conv --size $3 --bpp 2 --no-compress --format lvgl --font $1 --output $2_2.h --force-fast-kern-format --range 0x20-0x1F470
+npx lv_font_conv --size $3 $options --format bin --font $1 --output $2.bin --range 0x20-0x7F
+npx lv_font_conv --size $3 $options --format bin --font $1 --output $2_2.bin --range 0x20-0x1F470
+npx lv_font_conv --size $3 $options --format lvgl --font $1 --output $2_2.h --range 0x20-0x1F470

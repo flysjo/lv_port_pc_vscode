@@ -81,7 +81,8 @@ int main(int argc, char **argv)
  
   lv_demo_widgets();
   fontmgr_init();
-  lv_font_t* font_large =  fontmgr_load("large.bin");
+//   lv_font_t* font_large =  fontmgr_load("large.bin");
+//   lv_font_t* font_normal2 =  lv_binfont_create("A:normal_2.bin");
   lv_font_t* font_normal =  fontmgr_load("normal_2.bin");
 
   lv_display_t* disp = lv_display_get_default();
