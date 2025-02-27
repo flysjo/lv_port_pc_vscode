@@ -15,8 +15,23 @@
 #include "lvgl/lvgl.h"
 
 #if defined(__cplusplus)
+#include <unordered_map>
+
 namespace els::cpro2::common::util::fontmgr
 {
+    class FontManager
+    {
+    public:
+        FontManager() = default;
+        ~FontManager();
+        FontManager(const FontManager&) = delete;
+        lv_font_t* load(const char* filename);
+        bool unload(lv_font_t* font);
+    private:
+        std::unordered_map<lv_font_t*, void*> font_map_;
+    };
+
+    extern FontManager theFontManager;
 
 } // namespace els::cpro2::common::util::fontmgr
 #endif  // __cplusplus
@@ -30,7 +45,7 @@ extern "C"
 
     lv_font_t *fontmgr_load(const char *name);
 
-    void fontmgr_unload(lv_font_t *font);
+    bool fontmgr_unload(lv_font_t *font);
 
 #if defined(__cplusplus)
 }

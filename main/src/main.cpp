@@ -80,10 +80,10 @@ int main(int argc, char **argv)
   #if LV_USE_OS == LV_OS_NONE
  
   lv_demo_widgets();
-  fontmgr_init();
+//   fontmgr_init();
 //   lv_font_t* font_large =  fontmgr_load("large.bin");
 //   lv_font_t* font_normal2 =  lv_binfont_create("A:normal_2.bin");
-  lv_font_t* font_normal =  fontmgr_load("normal_2.bin");
+  lv_font_t* font_normal =  els::cpro2::common::util::fontmgr::theFontManager.load("normal_2.bin");
 
   lv_display_t* disp = lv_display_get_default();
   lv_theme_t * theme = lv_theme_default_init(disp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED), true /* dark */, font_normal);

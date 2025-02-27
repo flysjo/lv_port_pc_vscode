@@ -70,9 +70,10 @@ add_subdirectory(lvgl)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS})
 
 set(SOURCE_FILES
-    main/src/main.c
+    main/src/main.cpp
     main/src/mouse_cursor_icon.c
     main/src/font_manager.cpp
+    main/src/filefont.cpp
 )
 
 add_executable(main ${SOURCE_FILES})
