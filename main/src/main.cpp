@@ -26,6 +26,7 @@
 // #include "lv_drivers/indev/mouse.h"
 // #include "lv_drivers/indev/keyboard.h"
 // #include "lv_drivers/indev/mousewheel.h"
+#include "font_manager.h"
 
 /*********************
  *      DEFINES
@@ -162,6 +163,13 @@ static void user_image_demo()
 }
 #endif
 
+const lv_font_t* font_normal = NULL;
+
+extern "C" const lv_font_t* getMyFont(void)
+{
+  return font_normal;
+}
+
 int main(int argc, char **argv)
 {
   (void)argc; /*Unused*/
@@ -172,6 +180,11 @@ int main(int argc, char **argv)
 
   /*Initialize the HAL (display, input devices, tick) for LVGL*/
   hal_init();
+  using namespace els::cpro2::common::platform::gui;
+  fonts::FontManager* theFontManager = new fonts::FontManager();
+
+  theFontManager->load("normal_2.bin", fonts::FontId::kSmall);
+  font_normal = theFontManager->get(fonts::FontId::kSmall);
 
 //  lv_example_switch_1();
 //  lv_example_calendar_1();
@@ -198,6 +211,14 @@ int main(int argc, char **argv)
 //  lv_demo_music();
 
 //  user_image_demo();
+//   fontmgr_init();
+//   lv_font_t* font_large =  fontmgr_load("large.bin");
+//   lv_font_t* font_normal2 =  lv_binfont_create("A:normal_2.bin");
+
+//   lv_display_t* disp = lv_display_get_default();
+//   lv_theme_t * theme = lv_theme_default_init(disp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED), true /* dark */, font_normal);
+    lv_disp_t* disp = lv_disp_get_default();
+    lv_theme_default_init(disp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED), true, font_normal);
 
   while(1) {
     /* Periodically call the lv_task handler.
@@ -205,8 +226,6 @@ int main(int argc, char **argv)
     lv_timer_handler();
     usleep(5 * 1000);
   }
-
-  hal_deinit();
   return 0;
 }
 
