@@ -11,8 +11,10 @@ LV_DRIVER          := X11
 PROJECT 			?= lvgl-demo
 MAKEFLAGS 			:= -j $(shell nproc)
 SRC_EXT      		:= c
+SRC2_EXT      		:= cpp
 OBJ_EXT				:= o
 CC 					?= gcc
+CXX					?= g++
 
 SRC_DIR				:= ./
 WORKING_DIR			:= ./build
@@ -41,15 +43,17 @@ endif
 DEFINES				:= -D SIMULATOR=1 -D LV_BUILD_TEST=0 -D $(LV_DRIVER_USE)
 
 # Include simulator inc folder first so lv_conf.h from custom UI can be used instead
-INC 				:= -I./ui/simulator/inc/ -I./ -I./lvgl/ #-I/usr/include/freetype2 -L/usr/local/lib
-LDLIBS	 			:= -l$(LV_DRIVER) -lpthread -lm #-lfreetype -lavformat -lavcodec -lavutil -lswscale -lm -lz
+INC 				:= -I./ui/simulator/inc/ -I./ -I./lvgl/ -I./main/src #-I/usr/include/freetype2 -L/usr/local/lib
+LDLIBS	 			:= -l$(LV_DRIVER) -lpthread -lm -lstdc++  #-lfreetype -lavformat -lavcodec -lavutil -lswscale -lm -lz
 BIN 				:= $(BIN_DIR)/demo
 
 COMPILE				= $(CC) $(CFLAGS) $(INC) $(DEFINES)
+COMPILE_CXX			= $(CXX) $(CFLAGS) $(INC) $(DEFINES) -std=c++17
 
 # Automatically include all source files
-SRCS 				:= $(shell find $(SRC_DIR) -type f -name '*.c' -not -path '*/\.*')
-OBJECTS    			:= $(patsubst $(SRC_DIR)%,$(BUILD_DIR)/%,$(SRCS:.$(SRC_EXT)=.$(OBJ_EXT)))
+CSRCS 				:= $(shell find $(SRC_DIR) -type f -name '*.c' -not -path '*/\.*')
+CPPSRCS 			:= $(shell find $(SRC_DIR) -type f -name '*.cpp' -not -path '*/\.*')
+OBJECTS    			:= $(patsubst $(SRC_DIR)%,$(BUILD_DIR)/%,$(CSRCS:.$(SRC_EXT)=.$(OBJ_EXT))) $(patsubst $(SRC_DIR)%,$(BUILD_DIR)/%,$(CPPSRCS:.$(SRC2_EXT)=.$(OBJ_EXT)))
 
 all: $(BIN)
 
@@ -58,9 +62,15 @@ $(BUILD_DIR)/%.$(OBJ_EXT): $(SRC_DIR)/%.$(SRC_EXT) lv_demo_conf.h lv_conf.h Make
 	@mkdir -p $(dir $@)
 	@$(COMPILE) -c -o "$@" "$<"
 
+$(BUILD_DIR)/%.$(OBJ_EXT): $(SRC_DIR)/%.$(SRC2_EXT) lv_demo_conf.h lv_conf.h Makefile
+	@echo 'Building project file: $<'
+	@mkdir -p $(dir $@)
+	@$(COMPILE_CXX) -c -o "$@" "$<"
+
 $(BIN): $(OBJECTS)
 	@mkdir -p $(BIN_DIR)
-	$(CC) -o $(BIN) $(OBJECTS) $(LDFLAGS) ${LDLIBS}
+	@$(CC) -o $(BIN) $(OBJECTS) $(LDFLAGS) ${LDLIBS}
+	@echo 'Finished building target: $@'
 
 clean:
 	rm -rf $(WORKING_DIR)
@@ -68,3 +78,4 @@ clean:
 install: ${BIN}
 	install -d ${DESTDIR}/usr/lib/${PROJECT}/bin
 	install $< ${DESTDIR}/usr/lib/${PROJECT}/bin/
+
