@@ -1,38 +1,35 @@
-/**
- * @brief file font implementation
- *
- * @copyright Copyright (c) 2025 Pandema AB, Electrolux Professional
- *
- * @file font.cpp
- * @author Claes Ivarsson (ci@pandema.com)
- * @date 2025-02-26
- *
- */
+//* ******************************************************************************************************
+//*    @brief filefont implementation file
+//*    @copyright Copyright (c) 2025 Electrolux Professional
+//*    @file filefont.cpp
+//********************************************************************************************************
 
+// Included files
 #include "filefont.h"
 #include "lvgl/src/misc/lv_utils.h"
 
+// Included system files
 #include <string.h>
-#if defined(SIMULATOR)
-#include <iostream>
-#endif
 
 using namespace els::cpro2::common::platform::file_utils;
+using namespace els::cpro2::common::platform::gui;
 
+// *******************************************************************************************************
+// Private macro definitions
+// *******************************************************************************************************
+
+// *******************************************************************************************************
+// Private type definitions
+// *******************************************************************************************************
 typedef struct
 {
    uint32_t gid_left;
    uint32_t gid_right;
 } kern_pair_ref_t;
 
-extern "C" bool filefont_get_glyph_dsc_cb(const lv_font_t *font, lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next);
-
-#if LV_VERSION_CHECK(8, 0, 0)
-extern "C" const uint8_t *filefont_get_glyph_bitmap_cb(const lv_font_t *font, uint32_t unicode_letter);
-#elif LV_VERSION_CHECK(9, 0, 0)
-extern "C" const void *filefont_get_glyph_bitmap_cb(lv_font_glyph_dsc_t *g_dsc, uint32_t unicode_letter, lv_draw_buf_t *draw_buf);
-#endif
-
+// *******************************************************************************************************
+// Private attributes definitions
+// *******************************************************************************************************
 static const uint8_t opa4_table[16] = { 0, 17, 34, 51,
                                         68, 85, 102, 119,
                                         136, 153, 170, 187,
@@ -43,6 +40,21 @@ static const uint8_t opa3_table[8] = { 0, 36, 73, 109, 146, 182, 218, 255 };
 #endif
 
 static const uint8_t opa2_table[4] = { 0, 85, 170, 255 };
+
+// *******************************************************************************************************
+// Private functions definitions
+// *******************************************************************************************************
+extern "C" bool filefont_get_glyph_dsc_cb(const lv_font_t *font, lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next)
+{
+   fonts::FileFont *fontPtr = reinterpret_cast<fonts::FileFont *>(font->user_data);
+   return fontPtr->get_glyph_dsc(dsc_out, unicode, unicode_next);
+}
+
+extern "C" const uint8_t *filefont_get_glyph_bitmap_cb(const lv_font_t *font, uint32_t unicode_letter)
+{
+   fonts::FileFont *fontPtr = reinterpret_cast<fonts::FileFont *>(font->user_data);
+   return fontPtr->get_glyph_bitmap(unicode_letter);
+}
 
 static int32_t unicode_list_compare(const void *ref, const void *element)
 {
@@ -80,6 +92,10 @@ static int32_t kern_pair_16_compare(const void *ref, const void *element)
       return (int32_t)ref16_p->gid_right - element16_p[1];
    }
 }
+
+// *******************************************************************************************************
+// Public functions definitions
+// *******************************************************************************************************
 
 namespace els::cpro2::common::platform::gui::fonts
 {
@@ -135,7 +151,6 @@ namespace els::cpro2::common::platform::gui::fonts
       font_.get_glyph_dsc = filefont_get_glyph_dsc_cb;
       font_.get_glyph_bitmap = filefont_get_glyph_bitmap_cb;
       font_.user_data = (void *)this;
-      cached_letter_ = -1;
    }
 
    FileFont::~FileFont()
@@ -297,16 +312,6 @@ namespace els::cpro2::common::platform::gui::fonts
 
    bool FileFont::get_glyph_dsc(lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next)
    {
-#if LV_VERSION_CHECK(8, 0, 0)
-      if (unicode == cached_letter_)
-      {
-         *dsc_out = cached_glyph_dsc_;
-         return true;
-      }
-#elif LV_VERSION_CHECK(9, 0, 0)
-      // get_glyph_bitmap callback v9 needs to know who called it
-      dsc_out->entry = reinterpret_cast<lv_cache_entry_t *>(this);
-#endif
       /*It fixes a strange compiler optimization issue: https://github.com/lvgl/lvgl/issues/4370*/
       bool is_tab = unicode == '\t';
       if (is_tab)
@@ -318,6 +323,12 @@ namespace els::cpro2::common::platform::gui::fonts
       if (!gid)
       {
          return false;
+      }
+      auto cachedGlyph = glyph_cache_.get(gid);
+      if (cachedGlyph)
+      {
+         *dsc_out = cachedGlyph->glyph_dsc_;
+         return true;
       }
 
       int8_t kvalue = 0;
@@ -351,28 +362,19 @@ namespace els::cpro2::common::platform::gui::fonts
       dsc_out->box_w = gdsc.box_w;
       dsc_out->ofs_x = gdsc.ofs_x;
       dsc_out->ofs_y = gdsc.ofs_y;
-#if LV_VERSION_CHECK(8, 0, 0)
       dsc_out->bpp = (uint8_t)fdsc->bpp;
-#elif LV_VERSION_CHECK(9, 0, 0)
-      dsc_out->format = (uint8_t)fdsc->bpp;
-#endif
       dsc_out->is_placeholder = false;
 
       if (is_tab)
       {
          dsc_out->box_w = dsc_out->box_w * 2;
       }
-#if LV_VERSION_CHECK(8, 0, 0)
-      cached_glyph_dsc_ = *dsc_out;
-      cached_letter_ = unicode;
-#endif
+      glyph_cache_.add_dsc(gid, *dsc_out);
       return true;
    }
-#if LV_VERSION_CHECK(8, 0, 0)
-   const void *FileFont::get_glyph_bitmap(lv_font_glyph_dsc_t *g_dsc, uint32_t unicode_letter, std::vector<uint8_t> &draw_buf)
-   {
-      uint8_t *bitmap_out = &draw_buf[0];
 
+   const uint8_t *FileFont::get_glyph_bitmap(uint32_t unicode_letter)
+   {
       if (unicode_letter == '\t')
       {
          unicode_letter = ' ';
@@ -383,6 +385,17 @@ namespace els::cpro2::common::platform::gui::fonts
       if (!gid)
       {
          return NULL;
+      }
+      auto cachedGlyph = glyph_cache_.get(gid);
+      if (!cachedGlyph)
+      {
+         return NULL;
+      }
+      const lv_font_glyph_dsc_t *g_dsc = &cachedGlyph->glyph_dsc_;
+      uint8_t *bitmap_out = cachedGlyph->bitmap_.data();
+      if (cachedGlyph && cachedGlyph->has_bitmap())
+      {
+         return bitmap_out;
       }
 
       if (fdsc->bitmap_format == LV_FONT_FMT_TXT_PLAIN)
@@ -397,6 +410,8 @@ namespace els::cpro2::common::platform::gui::fonts
          }
          int nbits_bytes = (nbits() + 7) / 8;
          bmp_size += nbits_bytes;
+         cachedGlyph->bitmap_.resize(bmp_size + nbits_bytes + 10);
+         bitmap_out = cachedGlyph->bitmap_.data();
          std::vector<uint8_t> bitmap_in_tmp(bmp_size + nbits_bytes);
          if (!read(bitmap_in_tmp.data(), bmp_size, NULL))
          {
@@ -436,166 +451,13 @@ namespace els::cpro2::common::platform::gui::fonts
             /*The last fragment should be on the MSB but read_bits() will place it to the LSB*/
             bitmap_out[bmp_size - 1] = bitmap_out[bmp_size - 1] << (nbits() % 8);
          }
+         cachedGlyph->touch();
          return bitmap_out;
       }
 
       /*If not returned earlier then the letter is not found in this font*/
       return NULL;
    }
-
-#elif LV_VERSION_CHECK(9, 0, 0)
-   const void *FileFont::get_glyph_bitmap(lv_font_glyph_dsc_t *g_dsc, uint32_t unicode_letter, lv_draw_buf_t *draw_buf)
-   {
-      uint8_t *bitmap_out = draw_buf->data;
-
-      if (unicode_letter == '\t')
-      {
-         unicode_letter = ' ';
-      }
-
-      lv_font_fmt_txt_dsc_t *fdsc = (lv_font_fmt_txt_dsc_t *)font_.dsc;
-      uint32_t gid = get_glyph_dsc_id(unicode_letter);
-      if (!gid)
-      {
-         return NULL;
-      }
-
-      // const lv_font_fmt_txt_glyph_dsc_t * gdsc = &fdsc->glyph_dsc[gid];
-
-      if (fdsc->bitmap_format == LV_FONT_FMT_TXT_PLAIN)
-      {
-         int next_offset = (gid < loca_count_ - 1) ? glyph_offset_[gid + 1] : (uint32_t)glyph_length_;
-         size_t startPos = glyph_start_ + glyph_offset_[gid];
-         seek(startPos);
-         int bmp_size = next_offset - glyph_offset_[gid] - nbits() / 8;
-         if (bmp_size == 0)
-         {
-            return NULL;
-         }
-         int nbits_bytes = (nbits() + 7) / 8;
-         std::vector<uint8_t> bitmap_in_tmp(bmp_size);
-         if (!load_glyph_bitmap(gid, bitmap_in_tmp.data()))
-         {
-            return NULL;
-         }
-         const uint8_t *bitmap_in = &bitmap_in_tmp[0];
-         uint8_t *bitmap_out_tmp = bitmap_out;
-         int32_t i = 0;
-         int32_t x, y;
-         uint32_t stride = lv_draw_buf_width_to_stride(g_dsc->box_w, LV_COLOR_FORMAT_A8);
-
-         if (fdsc->bpp == 1)
-         {
-            for (y = 0; y < g_dsc->box_h; y++)
-            {
-               for (x = 0; x < g_dsc->box_w; x++, i++)
-               {
-                  i = i & 0x7;
-                  if (i == 0)
-                  {
-                     bitmap_out_tmp[x] = (*bitmap_in) & 0x80 ? 0xff : 0x00;
-                  }
-                  else if (i == 1)
-                  {
-                     bitmap_out_tmp[x] = (*bitmap_in) & 0x40 ? 0xff : 0x00;
-                  }
-                  else if (i == 2)
-                  {
-                     bitmap_out_tmp[x] = (*bitmap_in) & 0x20 ? 0xff : 0x00;
-                  }
-                  else if (i == 3)
-                  {
-                     bitmap_out_tmp[x] = (*bitmap_in) & 0x10 ? 0xff : 0x00;
-                  }
-                  else if (i == 4)
-                  {
-                     bitmap_out_tmp[x] = (*bitmap_in) & 0x08 ? 0xff : 0x00;
-                  }
-                  else if (i == 5)
-                  {
-                     bitmap_out_tmp[x] = (*bitmap_in) & 0x04 ? 0xff : 0x00;
-                  }
-                  else if (i == 6)
-                  {
-                     bitmap_out_tmp[x] = (*bitmap_in) & 0x02 ? 0xff : 0x00;
-                  }
-                  else if (i == 7)
-                  {
-                     bitmap_out_tmp[x] = (*bitmap_in) & 0x01 ? 0xff : 0x00;
-                     bitmap_in++;
-                  }
-               }
-               bitmap_out_tmp += stride;
-            }
-         }
-         else if (fdsc->bpp == 2)
-         {
-            for (y = 0; y < g_dsc->box_h; y++)
-            {
-               for (x = 0; x < g_dsc->box_w; x++, i++)
-               {
-                  i = i & 0x3;
-                  if (i == 0)
-                  {
-                     bitmap_out_tmp[x] = opa2_table[(*bitmap_in) >> 6];
-                  }
-                  else if (i == 1)
-                  {
-                     bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 4) & 0x3];
-                  }
-                  else if (i == 2)
-                  {
-                     bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 2) & 0x3];
-                  }
-                  else if (i == 3)
-                  {
-                     bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 0) & 0x3];
-                     bitmap_in++;
-                  }
-               }
-               bitmap_out_tmp += stride;
-            }
-         }
-         else if (fdsc->bpp == 4)
-         {
-            for (y = 0; y < g_dsc->box_h; y++)
-            {
-               for (x = 0; x < g_dsc->box_w; x++, i++)
-               {
-                  i = i & 0x1;
-                  if (i == 0)
-                  {
-                     bitmap_out_tmp[x] = opa4_table[(*bitmap_in) >> 4];
-                  }
-                  else if (i == 1)
-                  {
-                     bitmap_out_tmp[x] = opa4_table[(*bitmap_in) & 0xF];
-                     bitmap_in++;
-                  }
-               }
-               bitmap_out_tmp += stride;
-            }
-         }
-         return draw_buf;
-      }
-      /*Handle compressed bitmap*/
-      else
-      {
-#if LV_USE_FONT_COMPRESSED
-         bool prefilter = fdsc->bitmap_format == LV_FONT_FMT_TXT_COMPRESSED;
-         decompress(&fdsc->glyph_bitmap[gdsc->bitmap_index], bitmap_out, gdsc->box_w, gdsc->box_h,
-                    (uint8_t)fdsc->bpp, prefilter);
-         return draw_buf;
-#else /*!LV_USE_FONT_COMPRESSED*/
-         LV_LOG_WARN("Compressed fonts is used but LV_USE_FONT_COMPRESSED is not enabled in lv_conf.h");
-         return NULL;
-#endif
-      }
-
-      /*If not returned earlier then the letter is not found in this font*/
-      return NULL;
-   }
-#endif
 
    int32_t FileFont::read_label(uint32_t start, const char *label)
    {
@@ -611,41 +473,7 @@ namespace els::cpro2::common::platform::gui::fonts
       }
       return length;
    }
-   bool FileFont::load_glyph_bitmap(uint32_t gid, std::vector<uint8_t> &bitmap_out)
-   {
-      int bmp_size = bitmap_out.size();
-      std::vector<uint8_t> cache(bmp_size + nbits() / 8 + 1);
-      if (!read(cache.data(), cache.size(), NULL))
-      {
-         return false;
-      }
-      BitIterator bit_it = BitIterator(cache);
-      int res;
-      if (!bit_it.read_bits(nbits(), &res))
-      {
-         return false;
-      }
-      if (nbits() % 8 == 0)
-      {
-         int offset = nbits() / 8;
-         for (int k = 0; k < bmp_size; ++k)
-         {
-            bitmap_out[k] = cache[k + offset];
-         }
-      }
-      else
-      {
-         bitmap_out[bmp_size - 1] = bit_it.read_bits(8 - nbits() % 8, &res);
-         if (!res)
-         {
-            return false;
-         }
 
-         /*The last fragment should be on the MSB but read_bits() will place it to the LSB*/
-         bitmap_out[bmp_size - 1] = bitmap_out[bmp_size - 1] << (nbits() % 8);
-      }
-      return true;
-   }
    bool FileFont::load_glyph_dsc(uint32_t gid, lv_font_fmt_txt_glyph_dsc_t &gdsc)
    {
       if (!seek(glyph_start_ + glyph_offset_[gid]))
@@ -1064,39 +892,5 @@ namespace els::cpro2::common::platform::gui::fonts
       }
       return ptr;
    }
-
-   extern "C" bool filefont_get_glyph_dsc_cb(const lv_font_t *font, lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next)
-   {
-      FileFont *fontPtr = reinterpret_cast<FileFont *>(font->user_data);
-      return fontPtr->get_glyph_dsc(dsc_out, unicode, unicode_next);
-   }
-#if LV_VERSION_CHECK(8, 0, 0)
-   extern "C" const uint8_t *filefont_get_glyph_bitmap_cb(const lv_font_t *font, uint32_t unicode_letter)
-   {
-      static std::vector<uint8_t> bitmap_buf;
-      FileFont *fontPtr = reinterpret_cast<FileFont *>(font->user_data);
-      lv_font_glyph_dsc_t gdsc;
-      if (!fontPtr->get_glyph_dsc(&gdsc, unicode_letter, 0))
-      {
-         return NULL;
-      }
-      if (bitmap_buf.size() < gdsc.box_w * gdsc.box_h)
-      {
-         bitmap_buf.resize(gdsc.box_w * gdsc.box_h);
-      }
-      if (fontPtr->get_glyph_bitmap(&gdsc, unicode_letter, bitmap_buf))
-      {
-         return bitmap_buf.data();
-      }
-      return NULL;
-   }
-
-#elif LV_VERSION_CHECK(9, 0, 0)
-   extern "C" const void *filefont_get_glyph_bitmap_cb(lv_font_glyph_dsc_t *g_dsc, uint32_t unicode_letter, lv_draw_buf_t *draw_buf)
-   {
-      FileFont *fontPtr = reinterpret_cast<FileFont *>(g_dsc->entry);
-      return fontPtr->get_glyph_bitmap(g_dsc, unicode_letter, draw_buf);
-   }
-#endif
 
 }  // namespace els::cpro2::common::platform::gui::fonts
