@@ -27,6 +27,11 @@
 // #include "lv_drivers/indev/keyboard.h"
 // #include "lv_drivers/indev/mousewheel.h"
 #include "font_manager.h"
+#include "image_converter.h"
+#include "fileimage.h"
+
+using namespace els::cpro2::common::platform;
+using namespace els::cpro2::common::platform::gui;
 
 /*********************
  *      DEFINES
@@ -193,6 +198,30 @@ void lv_example_label_font(void)
     lv_obj_align(label2, LV_ALIGN_CENTER, 0, 40);
 }
 
+images::FileImage imgFile;
+
+/**
+ * Open a PNG image from a file and a variable
+ */
+void lv_example_png_2(void)
+{
+   imgFile.load("wink.bin");
+   lv_img_dsc_t* imgDsc = imgFile.get();
+   lv_obj_t * img;
+
+    img = lv_img_create(lv_scr_act());
+    lv_img_set_src(img, imgDsc);
+    lv_obj_align(img, LV_ALIGN_LEFT_MID, 20, 0);
+    lv_obj_set_height(img, 50);
+    lv_obj_set_width(img, 50);
+
+    img = lv_img_create(lv_scr_act());
+    /* Assuming a File system is attached to letter 'A'
+     * E.g. set LV_USE_FS_STDIO 'A' in lv_conf.h */
+    lv_img_set_src(img, "A:wink.png");
+    lv_obj_align(img, LV_ALIGN_RIGHT_MID, -20, 0);
+}
+
 
 int main(int argc, char **argv)
 {
@@ -231,8 +260,10 @@ int main(int argc, char **argv)
 
 //  user_image_demo();
 
-    lv_example_label_font();
+   images::ConvertPngToBin("wink.png", "wink.bin");
 
+    lv_example_label_font();
+    lv_example_png_2();
 
   while(1) {
     /* Periodically call the lv_task handler.

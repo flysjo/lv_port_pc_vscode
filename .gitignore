@@ -10,3 +10,4 @@ ui/
 # VSCode
 !.vscode/
 !.vscode/*
+wink.bin

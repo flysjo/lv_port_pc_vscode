@@ -81,7 +81,8 @@ class MonitoredFile : public IMonitoredFile {
    virtual ~MonitoredFile() override {}
 
    FRESULT Open(const char *path, BYTE mode) override {
-      file_ = fopen(path, "r");
+      const char* fmode = (mode & FA_READ) ? "r" : "w";
+      file_ = fopen(path, fmode);
       if (!file_) {
          return FR_NO_FILE;
       }
@@ -106,7 +107,13 @@ class MonitoredFile : public IMonitoredFile {
       }
       return FR_OK;
    }
-   FRESULT Write(const void *buffer, size_t bytes_to_write, size_t &bytes_written) override { return FR_OK; }
+   FRESULT Write(const void *buffer, size_t bytes_to_write, size_t &bytes_written) override {
+      for (size_t i = 0; i < bytes_to_write; i++) {
+         fputc(static_cast<int>(reinterpret_cast<const char *>(buffer)[i]), file_);
+      }
+      bytes_written = bytes_to_write;
+      return FR_OK; 
+   }
    FRESULT Write(const void *buffer, size_t file_offset, size_t bytes_to_write, size_t &bytes_written) override { return FR_OK; }
    FRESULT Read(void *buffer, size_t bytes_to_read, size_t &bytes_read) override {
       return fread(buffer, bytes_to_read, 1, file_) == 1 ? FR_OK : FR_DISK_ERR;
@@ -120,7 +127,12 @@ class MonitoredFile : public IMonitoredFile {
    }
    bool IsOpen() const override { return is_open_; };
    bool IsInactive() const override { return false; };
-   FSIZE_t GetSize() const override { return 0; };
+   FSIZE_t GetSize() const override {
+      fseek(file_, 0, SEEK_END);
+      FSIZE_t size = ftell(file_);
+      fseek(file_, 0, SEEK_SET);
+      return size;
+   };
    IMonitoredFile::FileHandle GetFileHandle() const override { return 0; };
 
   protected:
