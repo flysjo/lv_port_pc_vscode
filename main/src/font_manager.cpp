@@ -23,49 +23,39 @@
 
 namespace els::cpro2::common::platform::gui::fonts
 {
-   FontManager::~FontManager()
+   lv_font_t* FontManager::Load(const char* filename, FontId fontId)
    {
-      for (auto it = font_map_.begin(); it != font_map_.end(); ++it)
+      auto font = CreateFileFontObject();
+      if (!font->Load(filename))
       {
-         auto ptr = reinterpret_cast<FileFont*>(it->second);
-         delete ptr;
-      }
-   }
-   lv_font_t* FontManager::load(const char* filename, FontId fontId)
-   {
-      FileFont* font = new FileFont();
-      if (!font->load(filename))
-      {
-         delete font;
          return NULL;
       }
-      #if defined(SIMULATOR)
-      size_t size = font->size_of();
-      size_t num_chars = font->num_chars();
+#if defined(SIMULATOR)
+      size_t size = font->SizeOf();
+      size_t num_chars = font->NumChars();
       float kvot = size / num_chars;
       std::cout << "Font[" << filename << "] size: " << size << " num chars: " << num_chars << " / " << kvot << std::endl;
-    #endif
+#endif
       font_map_[fontId] = font;
-      return font->get();
+      return font_map_[fontId]->Get();
    }
-   bool FontManager::unload(FontId fontId)
+
+   bool FontManager::Unload(FontId fontId)
    {
       auto it = font_map_.find(fontId);
       if (it != font_map_.end())
       {
-         auto ptr = reinterpret_cast<FileFont*>(it->second);
-         delete ptr;
          font_map_.erase(it);
          return true;
       }
       return false;
    }
-   const lv_font_t* FontManager::get(FontId fontId, const lv_font_t* fallBack)
+
+   const lv_font_t* FontManager::Get(FontId fontId, const lv_font_t* fallBack)
    {
       if (font_map_.find(fontId) != font_map_.end())
       {
-         FileFont *font = reinterpret_cast<FileFont*>(font_map_[fontId]);
-         return font->get();
+         return font_map_[fontId]->Get();
       }
       return fallBack;
    }

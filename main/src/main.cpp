@@ -172,10 +172,10 @@ void lv_example_label_font(void)
 {
     using namespace els::cpro2::common::platform::gui;
     fonts::FontManager* theFontManager = new fonts::FontManager();
-    theFontManager->load("normal_2.bin", fonts::FontId::kSmall);
+    theFontManager->Load("normal_2.bin", 0);
     const lv_font_t* font_normal1 = lv_font_load("A:normal_2.bin");
 #if 1
-    const lv_font_t* font_normal = theFontManager->get(fonts::FontId::kSmall);
+    const lv_font_t* font_normal = theFontManager->Get(0);
 #endif
     if (font_normal != nullptr) {
         lv_obj_set_style_text_font(lv_scr_act(), font_normal, 0);
@@ -260,7 +260,10 @@ int main(int argc, char **argv)
 
 //  user_image_demo();
 
-   images::ConvertPngToBin("wink.png", "wink.bin");
+   if (!images::ConvertPngToBin("wink.png", "wink.bin"))
+   {
+      return -1;
+   }
 
     lv_example_label_font();
     lv_example_png_2();

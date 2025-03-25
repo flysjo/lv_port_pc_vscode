@@ -13,30 +13,52 @@
 #define FONT_MANAGER_H
 
 #include "lvgl.h"
+#include "filefont.h"
 
 #if defined(__cplusplus)
+#include <memory>
 #include <unordered_map>
 
 namespace els::cpro2::common::platform::gui::fonts
 {
-   enum class FontId : uint8_t
-   {
-      kSmall,
-      kMedium,
-      kLarge
-   };
+   typedef uint32_t FontId;
+
    class FontManager
    {
    public:
       FontManager() = default;
-      ~FontManager();
+      ~FontManager() = default;
       FontManager(const FontManager&) = delete;
-      lv_font_t* load(const char* filename, FontId fontI);
-      bool unload(FontId fontId);
-      const lv_font_t* get(FontId fontId, const lv_font_t* fallBack = NULL);
+
+      /**
+       * @brief load a font from file and store it in the font manager
+       * 
+       * @param filename      name of the file to load
+       * @param fontId        id of the font to store
+       * @return lv_font_t*   pointer to the loaded font, NULL if failed to load
+       */
+      lv_font_t* Load(const char* filename, FontId fontId);
+
+      /**
+       * @brief unload a font from the font manager
+       * 
+       * @param fontId  id of the font to unload
+       * @return true   font unloaded
+       * @return false  id not found
+       */
+      bool Unload(FontId fontId);
+
+      /**
+       * @brief get a font from the font manager
+       * 
+       * @param fontId     id of the font to get
+       * @param fallBack   pointer to font to return if fontId is not found
+       * @return const lv_font_t* 
+       */
+      const lv_font_t* Get(FontId fontId, const lv_font_t* fallBack = NULL);
 
    private:
-      std::unordered_map<FontId, void*> font_map_;
+      std::unordered_map<FontId, std::shared_ptr<IFileFont>> font_map_;
    };
 
 }  // namespace els::cpro2::common::platform::gui::fonts
