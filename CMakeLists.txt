@@ -71,7 +71,14 @@ add_compile_definitions($<$<BOOL:${LV_USE_FFMPEG}>:LV_USE_FFMPEG=1>)
 add_subdirectory(lvgl)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS})
 
-# Create the main executable, depending on the FreeRTOS option
+set(SOURCE_FILES
+    main/src/main.cpp
+    main/src/mouse_cursor_icon.c
+    main/src/font_manager.cpp
+    main/src/filefont.cpp
+)
+
+add_executable(main ${SOURCE_FILES})
 if(USE_FREERTOS)
     add_executable(main
         ${PROJECT_SOURCE_DIR}/main/src/main.c
@@ -82,11 +89,6 @@ if(USE_FREERTOS)
     )
     # Link FreeRTOS libraries
     target_link_libraries(main freertos_config FreeRTOS)
-else()
-    add_executable(main
-        ${PROJECT_SOURCE_DIR}/main/src/main.c
-        ${PROJECT_SOURCE_DIR}/main/src/mouse_cursor_icon.c
-    )
 endif()
 
 # Define LVGL configuration as a simple include
