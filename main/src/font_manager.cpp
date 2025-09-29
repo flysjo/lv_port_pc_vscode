@@ -11,74 +11,53 @@
  */
 
 #include <cstdio>
-#include <iostream>
 #include <cstring>
 #include <string>
 #include <vector>
 #include <map>
 #include "font_manager.h"
 #include "filefont.h"
+#if defined(SIMULATOR)
+#include <iostream>
+#endif
 
-
-#include "../normal_2.h"
-
-using namespace els::cpro2::common::util;
-
-namespace els::cpro2::common::util::fontmgr
+namespace els::cpro2::common::platform::gui::fonts
 {
-    FontManager::~FontManager()
-    {
-        for (auto it = font_map_.begin(); it != font_map_.end(); ++it)
-        {
-            auto ptr = reinterpret_cast<font::FileFont*>(it->second);
-            delete ptr;
-        }
-    }
-    lv_font_t* FontManager::load(const char* filename)
-    {
-        font::FileFont* font = new font::FileFont();
-        if (!font->load(filename))
-        {
-            delete font;
-            return NULL;
-        }
-        size_t size = font->size_of();
-        size_t num_chars = font->num_chars();
-        float kvot = size / num_chars;
-        std::cout << "Font[" << filename << "] size: " << size << " num chars: " << num_chars << " / " << kvot << std::endl;
-        font_map_[font->get()] = font;
-        return font->get();
-    }
-    bool FontManager::unload(lv_font_t* font)
-    {
-        auto it = font_map_.find(font);
-        if (it != font_map_.end())
-        {
-            auto ptr = reinterpret_cast<font::FileFont*>(it->second);
-            delete ptr;
-            font_map_.erase(it);
-            return true;
-        }
-        return false;
-    }
-    FontManager theFontManager;
-} // els::cpro2::common::util::fontmgr
+   lv_font_t* FontManager::Load(const char* filename, FontId fontId)
+   {
+      auto font = CreateFileFontObject();
+      if (!font->Load(filename))
+      {
+         return NULL;
+      }
+#if defined(SIMULATOR)
+      size_t size = font->SizeOf();
+      size_t num_chars = font->NumChars();
+      float kvot = size / num_chars;
+      std::cout << "Font[" << filename << "] size: " << size << " num chars: " << num_chars << " / " << kvot << std::endl;
+#endif
+      font_map_[fontId] = font;
+      return font_map_[fontId]->Get();
+   }
 
-extern "C" {
+   bool FontManager::Unload(FontId fontId)
+   {
+      auto it = font_map_.find(fontId);
+      if (it != font_map_.end())
+      {
+         font_map_.erase(it);
+         return true;
+      }
+      return false;
+   }
 
-    void fontmgr_init()
-    {
-        const lv_font_t* font_normal_2 =  &normal_2;
-        std::cout << "normal_2 font size: " << sizeof(normal_2) << std::endl;
-    }
+   const lv_font_t* FontManager::Get(FontId fontId, const lv_font_t* fallBack)
+   {
+      if (font_map_.find(fontId) != font_map_.end())
+      {
+         return font_map_[fontId]->Get();
+      }
+      return fallBack;
+   }
 
-    lv_font_t *fontmgr_load(const char *name)
-    {
-        return fontmgr::theFontManager.load(name);
-    }
-
-    bool fontmgr_unload(lv_font_t *font)
-    {
-        return fontmgr::theFontManager.unload(font);
-    }
-}
+}  // namespace els::cpro2::common::platform::gui::fonts

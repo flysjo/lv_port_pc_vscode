@@ -12,43 +12,56 @@
 #ifndef FONT_MANAGER_H
 #define FONT_MANAGER_H
 
-#include "lvgl/lvgl.h"
+#include "lvgl.h"
+#include "filefont.h"
 
 #if defined(__cplusplus)
+#include <memory>
 #include <unordered_map>
 
-namespace els::cpro2::common::util::fontmgr
+namespace els::cpro2::common::platform::gui::fonts
 {
-    class FontManager
-    {
-    public:
-        FontManager() = default;
-        ~FontManager();
-        FontManager(const FontManager&) = delete;
-        lv_font_t* load(const char* filename);
-        bool unload(lv_font_t* font);
-    private:
-        std::unordered_map<lv_font_t*, void*> font_map_;
-    };
+   typedef uint32_t FontId;
 
-    extern FontManager theFontManager;
+   class FontManager
+   {
+   public:
+      FontManager() = default;
+      ~FontManager() = default;
+      FontManager(const FontManager&) = delete;
 
-} // namespace els::cpro2::common::util::fontmgr
+      /**
+       * @brief load a font from file and store it in the font manager
+       * 
+       * @param filename      name of the file to load
+       * @param fontId        id of the font to store
+       * @return lv_font_t*   pointer to the loaded font, NULL if failed to load
+       */
+      lv_font_t* Load(const char* filename, FontId fontId);
+
+      /**
+       * @brief unload a font from the font manager
+       * 
+       * @param fontId  id of the font to unload
+       * @return true   font unloaded
+       * @return false  id not found
+       */
+      bool Unload(FontId fontId);
+
+      /**
+       * @brief get a font from the font manager
+       * 
+       * @param fontId     id of the font to get
+       * @param fallBack   pointer to font to return if fontId is not found
+       * @return const lv_font_t* 
+       */
+      const lv_font_t* Get(FontId fontId, const lv_font_t* fallBack = NULL);
+
+   private:
+      std::unordered_map<FontId, std::shared_ptr<IFileFont>> font_map_;
+   };
+
+}  // namespace els::cpro2::common::platform::gui::fonts
 #endif  // __cplusplus
 
-#if defined(__cplusplus)
-extern "C"
-{
-#endif  // __cplusplus
-
-    void fontmgr_init();
-
-    lv_font_t *fontmgr_load(const char *name);
-
-    bool fontmgr_unload(lv_font_t *font);
-
-#if defined(__cplusplus)
-}
-#endif  // __cplusplus
-
-#endif // FONT_MANAGER_H
+#endif  // FONT_MANAGER_H
