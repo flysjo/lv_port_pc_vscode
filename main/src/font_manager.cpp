@@ -34,8 +34,12 @@ namespace els::cpro2::common::platform::gui::fonts
       size_t size = font->SizeOf();
       size_t num_chars = font->NumChars();
       float kvot = size / num_chars;
-      std::cout << "Font[" << filename << "] size: " << size << " num chars: " << num_chars << " / " << kvot << std::endl;
+      std::cout
+#else
+      LOG(Log::kInfo)
 #endif
+      << "Font[" << filename << "] size: " << size << " num chars: " << num_chars << " / " << kvot;
+
       font_map_[fontId] = font;
       return font_map_[fontId]->Get();
    }
@@ -51,13 +55,19 @@ namespace els::cpro2::common::platform::gui::fonts
       return false;
    }
 
-   const lv_font_t* FontManager::Get(FontId fontId, const lv_font_t* fallBack)
+   const lv_font_t* FontManager::Get(FontId fontId)
    {
       if (font_map_.find(fontId) != font_map_.end())
       {
          return font_map_[fontId]->Get();
       }
-      return fallBack;
+      return NULL;
+   }
+
+
+   std::unique_ptr<FontManager> MakeFontManager()
+   {
+      return std::make_unique<FontManager>();
    }
 
 }  // namespace els::cpro2::common::platform::gui::fonts

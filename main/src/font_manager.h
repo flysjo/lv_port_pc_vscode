@@ -14,6 +14,8 @@
 
 #include "lvgl.h"
 #include "filefont.h"
+// #include "grabber_types.h"
+// #include "grabber_fixedfonts.h"
 
 #if defined(__cplusplus)
 #include <memory>
@@ -32,7 +34,7 @@ namespace els::cpro2::common::platform::gui::fonts
 
       /**
        * @brief load a font from file and store it in the font manager
-       * 
+       *
        * @param filename      name of the file to load
        * @param fontId        id of the font to store
        * @return lv_font_t*   pointer to the loaded font, NULL if failed to load
@@ -41,7 +43,7 @@ namespace els::cpro2::common::platform::gui::fonts
 
       /**
        * @brief unload a font from the font manager
-       * 
+       *
        * @param fontId  id of the font to unload
        * @return true   font unloaded
        * @return false  id not found
@@ -50,16 +52,22 @@ namespace els::cpro2::common::platform::gui::fonts
 
       /**
        * @brief get a font from the font manager
-       * 
+       *
        * @param fontId     id of the font to get
-       * @param fallBack   pointer to font to return if fontId is not found
-       * @return const lv_font_t* 
+       * @return const lv_font_t*
        */
-      const lv_font_t* Get(FontId fontId, const lv_font_t* fallBack = NULL);
+      const lv_font_t* Get(FontId fontId);
+
+      /**
+       * @brief Load all expected fonts from the filesystem at once.
+       */
+      void LoadAllFonts();
 
    private:
       std::unordered_map<FontId, std::shared_ptr<IFileFont>> font_map_;
    };
+
+   std::unique_ptr<FontManager> MakeFontManager();
 
 }  // namespace els::cpro2::common::platform::gui::fonts
 #endif  // __cplusplus

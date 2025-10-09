@@ -4,3 +4,6 @@ bin/
 
 # Ignore UI folder, this should be commited in its own repository
 ui/
+node_modules/
+package-lock.json
+package.json

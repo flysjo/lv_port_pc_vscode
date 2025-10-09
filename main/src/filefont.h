@@ -51,7 +51,6 @@ namespace els::cpro2::common::platform::gui::fonts
       virtual lv_font_t *Get() = 0;
       virtual size_t NumChars() const = 0;
       virtual size_t SizeOf() const = 0;
-      /* callback from lvgl font engine */
    };
 
    std::shared_ptr<IFileFont> CreateFileFontObject();
