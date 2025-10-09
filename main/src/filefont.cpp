@@ -32,13 +32,12 @@ typedef struct
 // *******************************************************************************************************
 constexpr size_t kMaxGlyphsInCache = 50;
 
-static const uint8_t opa4_table[16] = {0,  17, 34,  51,
-                                       68, 85, 102, 119,
-                                       136, 153, 170, 187,
-                                       204, 221, 238, 255
-                                      };
+static const uint8_t opa4_table[16] = { 0, 17, 34, 51,
+                                        68, 85, 102, 119,
+                                        136, 153, 170, 187,
+                                        204, 221, 238, 255 };
 
-static const uint8_t opa2_table[4] = {0, 85, 170, 255};
+static const uint8_t opa2_table[4] = { 0, 85, 170, 255 };
 
 // *******************************************************************************************************
 // Private functions definitions
@@ -46,32 +45,44 @@ static const uint8_t opa2_table[4] = {0, 85, 170, 255};
 
 static lv_font_glyph_format_t formatFromBpp(int bpp)
 {
-    switch(bpp) {
-        case 1: return LV_FONT_GLYPH_FORMAT_A1;
-        case 2: return LV_FONT_GLYPH_FORMAT_A2;
-        case 3: return LV_FONT_GLYPH_FORMAT_A3;
-        case 4: return LV_FONT_GLYPH_FORMAT_A4;
-        case 8: return LV_FONT_GLYPH_FORMAT_A8;
-        default: return LV_FONT_GLYPH_FORMAT_NONE;
-    }
+   switch (bpp)
+   {
+      case 1:
+         return LV_FONT_GLYPH_FORMAT_A1;
+      case 2:
+         return LV_FONT_GLYPH_FORMAT_A2;
+      case 3:
+         return LV_FONT_GLYPH_FORMAT_A3;
+      case 4:
+         return LV_FONT_GLYPH_FORMAT_A4;
+      case 8:
+         return LV_FONT_GLYPH_FORMAT_A8;
+      default:
+         return LV_FONT_GLYPH_FORMAT_NONE;
+   }
 }
 static lv_font_fmt_txt_cmap_type_t typeFromFormat(int format)
 {
-    switch(format) {
-        case LV_FONT_FMT_TXT_CMAP_FORMAT0_FULL: return LV_FONT_FMT_TXT_CMAP_FORMAT0_FULL;
-        case LV_FONT_FMT_TXT_CMAP_SPARSE_TINY: return LV_FONT_FMT_TXT_CMAP_SPARSE_TINY;
-        case LV_FONT_FMT_TXT_CMAP_SPARSE_FULL: return LV_FONT_FMT_TXT_CMAP_SPARSE_FULL;
-        default:
-        case LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY: return LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY;
-    }
+   switch (format)
+   {
+      case LV_FONT_FMT_TXT_CMAP_FORMAT0_FULL:
+         return LV_FONT_FMT_TXT_CMAP_FORMAT0_FULL;
+      case LV_FONT_FMT_TXT_CMAP_SPARSE_TINY:
+         return LV_FONT_FMT_TXT_CMAP_SPARSE_TINY;
+      case LV_FONT_FMT_TXT_CMAP_SPARSE_FULL:
+         return LV_FONT_FMT_TXT_CMAP_SPARSE_FULL;
+      default:
+      case LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY:
+         return LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY;
+   }
 }
 
-static int32_t unicode_list_compare(const void *ref, const void *element)
+static int unicode_list_compare(const void *ref, const void *element)
 {
-   return ((int32_t)(*(uint16_t *)ref)) - ((int32_t)(*(uint16_t *)element));
+   return ((int)(*(uint16_t *)ref)) - ((int)(*(uint16_t *)element));
 }
 
-static int32_t kern_pair_8_compare(const void *ref, const void *element)
+static int kern_pair_8_compare(const void *ref, const void *element)
 {
    const kern_pair_ref_t *ref8_p = reinterpret_cast<const kern_pair_ref_t *>(ref);
    const uint8_t *element8_p = reinterpret_cast<const uint8_t *>(element);
@@ -79,15 +90,15 @@ static int32_t kern_pair_8_compare(const void *ref, const void *element)
    /*If the MSB is different it will matter. If not return the diff. of the LSB*/
    if (ref8_p->gid_left != element8_p[0])
    {
-      return (int32_t)ref8_p->gid_left - element8_p[0];
+      return (int)ref8_p->gid_left - element8_p[0];
    }
    else
    {
-      return (int32_t)ref8_p->gid_right - element8_p[1];
+      return (int)ref8_p->gid_right - element8_p[1];
    }
 }
 
-static int32_t kern_pair_16_compare(const void *ref, const void *element)
+static int kern_pair_16_compare(const void *ref, const void *element)
 {
    const kern_pair_ref_t *ref16_p = reinterpret_cast<const kern_pair_ref_t *>(ref);
    const uint16_t *element16_p = reinterpret_cast<const uint16_t *>(element);
@@ -95,11 +106,11 @@ static int32_t kern_pair_16_compare(const void *ref, const void *element)
    /*If the MSB is different it will matter. If not return the diff. of the LSB*/
    if (ref16_p->gid_left != element16_p[0])
    {
-      return (int32_t)ref16_p->gid_left - element16_p[0];
+      return (int)ref16_p->gid_left - element16_p[0];
    }
    else
    {
-      return (int32_t)ref16_p->gid_right - element16_p[1];
+      return (int)ref16_p->gid_right - element16_p[1];
    }
 }
 
@@ -203,7 +214,7 @@ namespace els::cpro2::common::platform::gui::fonts
             for (auto it = cache_.begin(); it != cache_.end(); ++it)
             {
 #if defined(SIMULATOR)
-                // std::cout << "cached gid: " << it->first << ", timestamp: " << it->second->accessedTimeStamp << std::endl;
+               // std::cout << "cached gid: " << it->first << ", timestamp: " << it->second->accessedTimeStamp << std::endl;
 #endif
                if (it->second->accessedTimeStamp < oldest)
                {
@@ -300,7 +311,7 @@ namespace els::cpro2::common::platform::gui::fonts
 
       /* callback from lvgl font engine */
       bool GetGlyphDsc(lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next);
-      const void *GetGlyphBitmap(lv_font_glyph_dsc_t * g_dsc, lv_draw_buf_t * draw_buf);
+      const void *GetGlyphBitmap(lv_font_glyph_dsc_t *g_dsc, lv_draw_buf_t *draw_buf);
       size_t NumChars() const
       {
          return loca_count_;
@@ -313,7 +324,7 @@ namespace els::cpro2::common::platform::gui::fonts
       int32_t ReadLabel(uint32_t pos, const char *label);
       bool LoadGlyphDsc(uint32_t gid, lv_font_fmt_txt_glyph_dsc_t &gdsc);
       int32_t LoadCmap(lv_font_fmt_txt_dsc_t *font_dsc, uint32_t start);
-      void* LoadBitmapToCache(uint32_t gid, lv_font_glyph_dsc_t *g_dsc);
+      void *LoadBitmapToCache(uint32_t gid, lv_font_glyph_dsc_t *g_dsc);
       bool LoadCmapsTables(lv_font_fmt_txt_dsc_t *font_dsc, uint32_t cmaps_start, cmap_table_bin_t *cmap_table);
       int32_t LoadKern(lv_font_fmt_txt_dsc_t *font_dsc, uint8_t format, uint32_t start);
       /* getters */
@@ -505,151 +516,151 @@ namespace els::cpro2::common::platform::gui::fonts
       return kern_length >= 0;
    }
 
-    bool FileFont::GetGlyphDsc(lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next)
-    {
-        /*It fixes a strange compiler optimization issue: https://github.com/lvgl/lvgl/issues/4370*/
-        bool is_tab = unicode == '\t';
-        if(is_tab)
-        {
-            unicode = ' ';
-        }
-        lv_font_fmt_txt_dsc_t *fdsc = (lv_font_fmt_txt_dsc_t *)font_.dsc;
-        uint32_t gid = GetGlyphDscId(unicode);
-        if (!gid)
-        {
-            return false;
-        }
-        auto cachedGlyph = glyph_cache_.Get(gid);
-        if (cachedGlyph)
-        {
-            *dsc_out = cachedGlyph->glyph_dsc_;
-            return true;
-        }
+   bool FileFont::GetGlyphDsc(lv_font_glyph_dsc_t *dsc_out, uint32_t unicode, uint32_t unicode_next)
+   {
+      /*It fixes a strange compiler optimization issue: https://github.com/lvgl/lvgl/issues/4370*/
+      bool is_tab = unicode == '\t';
+      if (is_tab)
+      {
+         unicode = ' ';
+      }
+      lv_font_fmt_txt_dsc_t *fdsc = (lv_font_fmt_txt_dsc_t *)font_.dsc;
+      uint32_t gid = GetGlyphDscId(unicode);
+      if (!gid)
+      {
+         return false;
+      }
+      auto cachedGlyph = glyph_cache_.Get(gid);
+      if (cachedGlyph)
+      {
+         *dsc_out = cachedGlyph->glyph_dsc_;
+         return true;
+      }
 
-        int8_t kvalue = 0;
-        if (fdsc->kern_dsc)
-        {
-            uint32_t gid_next = GetGlyphDscId(unicode_next);
-            if (gid_next)
-            {
-                kvalue = GetKernValue(gid, gid_next);
-            }
-        }
+      int8_t kvalue = 0;
+      if (fdsc->kern_dsc)
+      {
+         uint32_t gid_next = GetGlyphDscId(unicode_next);
+         if (gid_next)
+         {
+            kvalue = GetKernValue(gid, gid_next);
+         }
+      }
 
-        /*Put together a glyph dsc*/
-        lv_font_fmt_txt_glyph_dsc_t gdsc;
-        if (!LoadGlyphDsc(gid, gdsc))
-        {
-            return false;
-        }
+      /*Put together a glyph dsc*/
+      lv_font_fmt_txt_glyph_dsc_t gdsc;
+      if (!LoadGlyphDsc(gid, gdsc))
+      {
+         return false;
+      }
 
-        int32_t kv = ((int32_t)((int32_t)kvalue * fdsc->kern_scale) >> 4);
+      int32_t kv = ((int32_t)((int32_t)kvalue * fdsc->kern_scale) >> 4);
 
-        uint32_t adv_w = gdsc.adv_w;
-        if (is_tab)
-        {
-            adv_w *= 2;
-        }
+      uint32_t adv_w = gdsc.adv_w;
+      if (is_tab)
+      {
+         adv_w *= 2;
+      }
 
-        adv_w += kv;
-        adv_w  = (adv_w + (1 << 3)) >> 4;
+      adv_w += kv;
+      adv_w = (adv_w + (1 << 3)) >> 4;
 
-        dsc_out->adv_w = adv_w;
-        dsc_out->box_h = gdsc.box_h;
-        dsc_out->box_w = gdsc.box_w;
-        dsc_out->ofs_x = gdsc.ofs_x;
-        dsc_out->ofs_y = gdsc.ofs_y;
+      dsc_out->adv_w = adv_w;
+      dsc_out->box_h = gdsc.box_h;
+      dsc_out->box_w = gdsc.box_w;
+      dsc_out->ofs_x = gdsc.ofs_x;
+      dsc_out->ofs_y = gdsc.ofs_y;
 
-        if (fdsc->stride == 0)
-        {
-            dsc_out->stride = 0;
-        }
-        else
-        {
-            /*e.g. font_dsc stride ==  4 means align to 4 byte boundary.
-            *In glyph_dsc store the actual line length in bytes*/
-            dsc_out->stride = LV_ROUND_UP(dsc_out->box_w, fdsc->stride);
-        }
+      if (fdsc->stride == 0)
+      {
+         dsc_out->stride = 0;
+      }
+      else
+      {
+         /*e.g. font_dsc stride ==  4 means align to 4 byte boundary.
+          *In glyph_dsc store the actual line length in bytes*/
+         dsc_out->stride = LV_ROUND_UP(dsc_out->box_w, fdsc->stride);
+      }
 
-        dsc_out->format = formatFromBpp(fdsc->bpp);
-        dsc_out->is_placeholder = false;
-        dsc_out->gid.index = gid;
+      dsc_out->format = formatFromBpp(fdsc->bpp);
+      dsc_out->is_placeholder = false;
+      dsc_out->gid.index = gid;
 
-        if (is_tab)
-        {
-            dsc_out->box_w = dsc_out->box_w * 2;
-        }
-        glyph_cache_.AddDsc(gid, *dsc_out);
-        return true;
-    }
+      if (is_tab)
+      {
+         dsc_out->box_w = dsc_out->box_w * 2;
+      }
+      glyph_cache_.AddDsc(gid, *dsc_out);
+      return true;
+   }
 
-    void* FileFont::LoadBitmapToCache(uint32_t gid, lv_font_glyph_dsc_t *g_dsc)
-    {
-        lv_font_fmt_txt_dsc_t *fdsc = (lv_font_fmt_txt_dsc_t *)font_.dsc;
-        if (fdsc->bitmap_format != LV_FONT_FMT_TXT_PLAIN)
-        {
-            return NULL;
-        }
-        auto cachedGlyph = glyph_cache_.Get(gid);
-        if (!cachedGlyph)
-        {
-            return NULL;
-        }
-        int next_offset = (gid < loca_count_ - 1) ? glyph_offset_[gid + 1] : (uint32_t)glyph_length_;
-        size_t startPos = glyph_start_ + glyph_offset_[gid];
-        Seek(startPos);
-        int bmp_size = next_offset - glyph_offset_[gid] - NBits() / 8;
-        if (bmp_size == 0)
-        {
-        return NULL;
-        }
-        int nbits_bytes = (NBits() + 7) / 8;
-        bmp_size += nbits_bytes;
-        cachedGlyph->bitmap_.resize(bmp_size + nbits_bytes + 10);
-        uint8_t* bitmap_out = cachedGlyph->bitmap_.data();
-        std::vector<uint8_t> bitmap_in_tmp(bmp_size + nbits_bytes);
-        if (!Read(bitmap_in_tmp.data(), bmp_size, NULL))
-        {
-        return NULL;
-        }
-        BitIterator bit_it(bitmap_in_tmp);
-        int res;
-        bit_it.ReadBits(NBits(), &res);
-        if (res == 0)
-        {
-        return NULL;
-        }
-        if (g_dsc->box_w * g_dsc->box_h == 0)
-        {
-        return NULL;
-        }
-        if (NBits() % 8 == 0) /* fast path */
-        {
-        memcpy(bitmap_out, &bitmap_in_tmp[0], bmp_size);
-        }
-        else
-        {
-        for (int k = 0; k < bmp_size - 1; ++k)
-        {
+   void *FileFont::LoadBitmapToCache(uint32_t gid, lv_font_glyph_dsc_t *g_dsc)
+   {
+      lv_font_fmt_txt_dsc_t *fdsc = (lv_font_fmt_txt_dsc_t *)font_.dsc;
+      if (fdsc->bitmap_format != LV_FONT_FMT_TXT_PLAIN)
+      {
+         return NULL;
+      }
+      auto cachedGlyph = glyph_cache_.Get(gid);
+      if (!cachedGlyph)
+      {
+         return NULL;
+      }
+      int next_offset = (gid < loca_count_ - 1) ? glyph_offset_[gid + 1] : (uint32_t)glyph_length_;
+      size_t startPos = glyph_start_ + glyph_offset_[gid];
+      Seek(startPos);
+      int bmp_size = next_offset - glyph_offset_[gid] - NBits() / 8;
+      if (bmp_size == 0)
+      {
+         return NULL;
+      }
+      int nbits_bytes = (NBits() + 7) / 8;
+      bmp_size += nbits_bytes;
+      cachedGlyph->bitmap_.resize(bmp_size + nbits_bytes + 10);
+      uint8_t *bitmap_out = cachedGlyph->bitmap_.data();
+      std::vector<uint8_t> bitmap_in_tmp(bmp_size + nbits_bytes);
+      if (!Read(bitmap_in_tmp.data(), bmp_size, NULL))
+      {
+         return NULL;
+      }
+      BitIterator bit_it(bitmap_in_tmp);
+      int res;
+      bit_it.ReadBits(NBits(), &res);
+      if (res == 0)
+      {
+         return NULL;
+      }
+      if (g_dsc->box_w * g_dsc->box_h == 0)
+      {
+         return NULL;
+      }
+      if (NBits() % 8 == 0) /* fast path */
+      {
+         memcpy(bitmap_out, &bitmap_in_tmp[0], bmp_size);
+      }
+      else
+      {
+         for (int k = 0; k < bmp_size - 1; ++k)
+         {
             bitmap_out[k] = bit_it.ReadBits(8, &res);
             if (res == 0)
             {
-                return NULL;
+               return NULL;
             }
-        }
-        bitmap_out[bmp_size - 1] = bit_it.ReadBits(8 - NBits() % 8, &res);
-        if (res == 0)
-        {
+         }
+         bitmap_out[bmp_size - 1] = bit_it.ReadBits(8 - NBits() % 8, &res);
+         if (res == 0)
+         {
             return NULL;
-        }
+         }
 
-        /*The last fragment should be on the MSB but ReadBits() will place it to the LSB*/
-        bitmap_out[bmp_size - 1] = bitmap_out[bmp_size - 1] << (NBits() % 8);
-        }
-        cachedGlyph->Touch();
-        return cachedGlyph->bitmap_.data();
-    }
-   
+         /*The last fragment should be on the MSB but ReadBits() will place it to the LSB*/
+         bitmap_out[bmp_size - 1] = bitmap_out[bmp_size - 1] << (NBits() % 8);
+      }
+      cachedGlyph->Touch();
+      return cachedGlyph->bitmap_.data();
+   }
+
    const void *FileFont::GetGlyphBitmap(lv_font_glyph_dsc_t *g_dsc, lv_draw_buf_t *draw_buf)
    {
       lv_font_fmt_txt_dsc_t *fdsc = (lv_font_fmt_txt_dsc_t *)font_.dsc;
@@ -669,188 +680,179 @@ namespace els::cpro2::common::platform::gui::fonts
       }
       if (!cachedGlyph->has_bitmap())
       {
-          if (LoadBitmapToCache(gid, g_dsc) == NULL)
-          {
-              return NULL;
-          }
+         if (LoadBitmapToCache(gid, g_dsc) == NULL)
+         {
+            return NULL;
+         }
       }
       cachedGlyph = glyph_cache_.Get(gid);
 
       uint16_t stride_in = g_dsc->stride;
 
-      if (fdsc->bitmap_format == LV_FONT_FMT_TXT_PLAIN)
+      int next_offset = (gid < loca_count_ - 1) ? glyph_offset_[gid + 1] : (uint32_t)glyph_length_;
+      size_t startPos = glyph_start_ + glyph_offset_[gid];
+      Seek(startPos);
+      int bmp_size = next_offset - glyph_offset_[gid] - NBits() / 8;
+      if (bmp_size == 0)
       {
-         int next_offset = (gid < loca_count_ - 1) ? glyph_offset_[gid + 1] : (uint32_t)glyph_length_;
-         size_t startPos = glyph_start_ + glyph_offset_[gid];
-         Seek(startPos);
-         int bmp_size = next_offset - glyph_offset_[gid] - NBits() / 8;
-         if (bmp_size == 0)
+         return NULL;
+      }
+      int nbits_bytes = (NBits() + 7) / 8;
+      bmp_size += nbits_bytes;
+      cachedGlyph->bitmap_.resize(bmp_size + nbits_bytes + 10);
+      uint8_t *bitmap_out = draw_buf->data;
+      uint8_t *bitmap_out_tmp = draw_buf->data;
+      uint8_t *bitmap_in = cachedGlyph->bitmap_.data();
+      int32_t i = 0;
+      int32_t x, y;
+      uint32_t stride_out = lv_draw_buf_width_to_stride(g_dsc->box_w, LV_COLOR_FORMAT_A8);
+
+      if (fdsc->bpp == 1)
+      {
+         for (y = 0; y < g_dsc->box_h; y++)
          {
-            return NULL;
+            uint16_t line_rem = stride_in != 0 ? stride_in : g_dsc->box_w;
+            for (x = 0; x < g_dsc->box_w; x++, i++)
+            {
+               i = i & 0x7;
+               if (i == 0)
+               {
+                  bitmap_out_tmp[x] = (*bitmap_in) & 0x80 ? 0xff : 0x00;
+               }
+               else if (i == 1)
+               {
+                  bitmap_out_tmp[x] = (*bitmap_in) & 0x40 ? 0xff : 0x00;
+               }
+               else if (i == 2)
+               {
+                  bitmap_out_tmp[x] = (*bitmap_in) & 0x20 ? 0xff : 0x00;
+               }
+               else if (i == 3)
+               {
+                  bitmap_out_tmp[x] = (*bitmap_in) & 0x10 ? 0xff : 0x00;
+               }
+               else if (i == 4)
+               {
+                  bitmap_out_tmp[x] = (*bitmap_in) & 0x08 ? 0xff : 0x00;
+               }
+               else if (i == 5)
+               {
+                  bitmap_out_tmp[x] = (*bitmap_in) & 0x04 ? 0xff : 0x00;
+               }
+               else if (i == 6)
+               {
+                  bitmap_out_tmp[x] = (*bitmap_in) & 0x02 ? 0xff : 0x00;
+               }
+               else if (i == 7)
+               {
+                  bitmap_out_tmp[x] = (*bitmap_in) & 0x01 ? 0xff : 0x00;
+                  line_rem--;
+                  bitmap_in++;
+               }
+            }
+            /*Handle stride*/
+            if (stride_in)
+            {
+               i = 0; /*If there is a stride start from the next byte in the next
+                           line*/
+               bitmap_in += line_rem;
+            }
+            bitmap_out_tmp += stride_out;
          }
-         int nbits_bytes = (NBits() + 7) / 8;
-         bmp_size += nbits_bytes;
-         cachedGlyph->bitmap_.resize(bmp_size + nbits_bytes + 10);
-         uint8_t* bitmap_out = draw_buf->data;
-         uint8_t * bitmap_out_tmp = draw_buf->data;
-         uint8_t *bitmap_in = cachedGlyph->bitmap_.data();
-            int32_t i = 0;
-            int32_t x, y;
-            uint32_t stride_out = lv_draw_buf_width_to_stride(g_dsc->box_w, LV_COLOR_FORMAT_A8);
-
-            if (fdsc->bpp == 1)
+      }
+      else if (fdsc->bpp == 2)
+      {
+         for (y = 0; y < g_dsc->box_h; y++)
+         {
+            uint16_t line_rem = stride_in != 0 ? stride_in : g_dsc->box_w;
+            for (x = 0; x < g_dsc->box_w; x++, i++)
             {
-                for (y = 0; y < g_dsc->box_h; y++)
-                {
-                    uint16_t line_rem = stride_in != 0 ? stride_in : g_dsc->box_w;
-                    for (x = 0; x < g_dsc->box_w; x++, i++)
-                    {
-                        i = i & 0x7;
-                        if (i == 0)
-                        {
-                            bitmap_out_tmp[x] = (*bitmap_in) & 0x80 ? 0xff : 0x00;
-                        }
-                        else if (i == 1)
-                        {
-                            bitmap_out_tmp[x] = (*bitmap_in) & 0x40 ? 0xff : 0x00;
-                        }
-                        else if (i == 2)
-                        {
-                            bitmap_out_tmp[x] = (*bitmap_in) & 0x20 ? 0xff : 0x00;
-                        }
-                        else if (i == 3)
-                        {
-                            bitmap_out_tmp[x] = (*bitmap_in) & 0x10 ? 0xff : 0x00;
-                        }
-                        else if (i == 4)
-                        {
-                            bitmap_out_tmp[x] = (*bitmap_in) & 0x08 ? 0xff : 0x00;
-                        }
-                        else if (i == 5)
-                        {
-                            bitmap_out_tmp[x] = (*bitmap_in) & 0x04 ? 0xff : 0x00;
-                        }
-                        else if (i == 6)
-                        {
-                            bitmap_out_tmp[x] = (*bitmap_in) & 0x02 ? 0xff : 0x00;
-                        }
-                        else if (i == 7)
-                        {
-                            bitmap_out_tmp[x] = (*bitmap_in) & 0x01 ? 0xff : 0x00;
-                            line_rem--;
-                            bitmap_in++;
-                        }
-                    }
-                    /*Handle stride*/
-                    if (stride_in)
-                    {
-                        i = 0; /*If there is a stride start from the next byte in the next
-                                    line*/
-                        bitmap_in += line_rem;
-                    }
-                    bitmap_out_tmp += stride_out;
-                }
+               i = i & 0x3;
+               if (i == 0)
+               {
+                  bitmap_out_tmp[x] = opa2_table[(*bitmap_in) >> 6];
+               }
+               else if (i == 1)
+               {
+                  bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 4) & 0x3];
+               }
+               else if (i == 2)
+               {
+                  bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 2) & 0x3];
+               }
+               else if (i == 3)
+               {
+                  bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 0) & 0x3];
+                  line_rem--;
+                  bitmap_in++;
+               }
             }
-            else if (fdsc->bpp == 2)
+
+            /*Handle stride*/
+            if (stride_in)
             {
-                for (y = 0; y < g_dsc->box_h; y++)
-                {
-                    uint16_t line_rem = stride_in != 0 ? stride_in : g_dsc->box_w;
-                    for (x = 0; x < g_dsc->box_w; x++, i++)
-                    {
-                        i = i & 0x3;
-                        if (i == 0)
-                        {
-                            bitmap_out_tmp[x] = opa2_table[(*bitmap_in) >> 6];
-                        }
-                        else if (i == 1)
-                        {
-                            bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 4) & 0x3];
-                        }
-                        else if (i == 2)
-                        {
-                            bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 2) & 0x3];
-                        }
-                        else if (i == 3)
-                        {
-                            bitmap_out_tmp[x] = opa2_table[((*bitmap_in) >> 0) & 0x3];
-                            line_rem--;
-                            bitmap_in++;
-                        }
-                    }
-
-                    /*Handle stride*/
-                    if (stride_in)
-                    {
-                        i = 0; /*If there is a stride start from the next byte in the next line*/
-                        bitmap_in += line_rem;
-                    }
-                    bitmap_out_tmp += stride_out;
-                }
-
+               i = 0; /*If there is a stride start from the next byte in the next line*/
+               bitmap_in += line_rem;
             }
-            else if (fdsc->bpp == 4)
+            bitmap_out_tmp += stride_out;
+         }
+      }
+      else if (fdsc->bpp == 4)
+      {
+         for (y = 0; y < g_dsc->box_h; y++)
+         {
+            uint16_t line_rem = stride_in != 0 ? stride_in : g_dsc->box_w;
+            for (x = 0; x < g_dsc->box_w; x++, i++)
             {
-                for (y = 0; y < g_dsc->box_h; y++)
-                {
-                    uint16_t line_rem = stride_in != 0 ? stride_in : g_dsc->box_w;
-                    for (x = 0; x < g_dsc->box_w; x++, i++)
-                    {
-                        i = i & 0x1;
-                        if (i == 0)
-                        {
-                            bitmap_out_tmp[x] = opa4_table[(*bitmap_in) >> 4];
-                        } else if (i == 1) {
-                            bitmap_out_tmp[x] = opa4_table[(*bitmap_in) & 0xF];
-                            line_rem--;
-                            bitmap_in++;
-                        }
-                    }
-
-                    /*Handle stride*/
-                    if (stride_in)
-                    {
-                        i = 0; /*If there is a stride start from the next byte in the next line*/
-                        bitmap_in += line_rem;
-                    }
-                    bitmap_out_tmp += stride_out;
-                }
+               i = i & 0x1;
+               if (i == 0)
+               {
+                  bitmap_out_tmp[x] = opa4_table[(*bitmap_in) >> 4];
+               }
+               else if (i == 1)
+               {
+                  bitmap_out_tmp[x] = opa4_table[(*bitmap_in) & 0xF];
+                  line_rem--;
+                  bitmap_in++;
+               }
             }
-            else if (fdsc->bpp == 8)
+
+            /*Handle stride*/
+            if (stride_in)
             {
-                for (y = 0; y < g_dsc->box_h; y++)
-                {
-                    uint16_t line_rem = stride_in != 0 ? stride_in : g_dsc->box_w;
-                    for (x = 0; x < g_dsc->box_w; x++, i++) {
-                    bitmap_out_tmp[x] = *bitmap_in;
-                    line_rem--;
-                    bitmap_in++;
-                    }
-                    bitmap_out_tmp += stride_out;
-                    bitmap_in += line_rem;
-                }
+               i = 0; /*If there is a stride start from the next byte in the next line*/
+               bitmap_in += line_rem;
             }
-            lv_draw_buf_flush_cache(draw_buf, NULL);
-            return draw_buf;
-        }
-        /*Handle compressed bitmap*/
-        else
-        {
-            LV_LOG_WARN(
-                "Compressed fonts is used but LV_USE_FONT_COMPRESSED is not enabled in "
-                "lv_conf.h");
-            return NULL;
-        }
+            bitmap_out_tmp += stride_out;
+         }
+      }
+      else if (fdsc->bpp == 8)
+      {
+         for (y = 0; y < g_dsc->box_h; y++)
+         {
+            uint16_t line_rem = stride_in != 0 ? stride_in : g_dsc->box_w;
+            for (x = 0; x < g_dsc->box_w; x++, i++)
+            {
+               bitmap_out_tmp[x] = *bitmap_in;
+               line_rem--;
+               bitmap_in++;
+            }
+            bitmap_out_tmp += stride_out;
+            bitmap_in += line_rem;
+         }
+      }
+      lv_draw_buf_flush_cache(draw_buf, NULL);
+      return draw_buf;
 
-        /*If not returned earlier then the letter is not found in this font*/
-        return NULL;
-    }
+      /*If not returned earlier then the letter is not found in this font*/
+      return NULL;
+   }
 
    int32_t FileFont::ReadLabel(uint32_t start, const char *label)
    {
       Seek(start);
       uint32_t length;
-      char buf[4] = {0,0,0,0};
+      char buf[4] = { 0, 0, 0, 0 };
       if (!Read(&length, 4, NULL) ||
           !Read(buf, 4, NULL) ||
           memcmp(label, buf, 4) != 0)
@@ -1226,14 +1228,17 @@ namespace els::cpro2::common::platform::gui::fonts
             /* The first character is always valid and should have offset = 0
              * However if a character is missing it also has offset=0.
              * So if there is a 0 not on the first position then it's a missing character */
-            if(gid_ofs_8[rcp] == 0 && letter != fdsc->cmaps[i].range_start) continue;
+            if (gid_ofs_8[rcp] == 0 && letter != fdsc->cmaps[i].range_start)
+            {
+               continue;
+            }
             glyph_id = fdsc->cmaps[i].glyph_id_start + gid_ofs_8[rcp];
          }
          else if (fdsc->cmaps[i].type == LV_FONT_FMT_TXT_CMAP_SPARSE_TINY)
          {
             uint16_t key = rcp;
             uint16_t *p = reinterpret_cast<uint16_t *>(lv_utils_bsearch(&key, fdsc->cmaps[i].unicode_list, fdsc->cmaps[i].list_length,
-                                                                         sizeof(fdsc->cmaps[i].unicode_list[0]), unicode_list_compare));
+                                                                        sizeof(fdsc->cmaps[i].unicode_list[0]), unicode_list_compare));
 
             if (p)
             {
@@ -1245,7 +1250,7 @@ namespace els::cpro2::common::platform::gui::fonts
          {
             uint16_t key = rcp;
             uint16_t *p = reinterpret_cast<uint16_t *>(lv_utils_bsearch(&key, fdsc->cmaps[i].unicode_list, fdsc->cmaps[i].list_length,
-                                                                         sizeof(fdsc->cmaps[i].unicode_list[0]), unicode_list_compare));
+                                                                        sizeof(fdsc->cmaps[i].unicode_list[0]), unicode_list_compare));
 
             if (p)
             {
@@ -1300,7 +1305,7 @@ namespace els::cpro2::common::platform::gui::fonts
       return fontPtr->GetGlyphDsc(dsc_out, unicode, unicode_next);
    }
 
-   const void *FileFont::FileFontGetGlyphBitMapCallback(lv_font_glyph_dsc_t *dsc, lv_draw_buf_t * draw_buf)
+   const void *FileFont::FileFontGetGlyphBitMapCallback(lv_font_glyph_dsc_t *dsc, lv_draw_buf_t *draw_buf)
    {
       auto fontPtr = reinterpret_cast<fonts::FileFont *>(dsc->resolved_font->user_data);
       return fontPtr->GetGlyphBitmap(dsc, draw_buf);

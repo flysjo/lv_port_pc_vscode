@@ -30,10 +30,10 @@ namespace els::cpro2::common::platform::gui::fonts
       {
          return NULL;
       }
-#if defined(SIMULATOR)
       size_t size = font->SizeOf();
       size_t num_chars = font->NumChars();
       float kvot = size / num_chars;
+#if defined(SIMULATOR)
       std::cout
 #else
       LOG(Log::kInfo)
